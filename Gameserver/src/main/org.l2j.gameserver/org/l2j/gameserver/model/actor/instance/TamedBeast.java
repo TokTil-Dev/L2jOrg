@@ -4,14 +4,14 @@ import org.l2j.commons.threading.ThreadPool;
 import org.l2j.commons.util.Rnd;
 import org.l2j.gameserver.ai.CtrlIntention;
 import org.l2j.gameserver.data.xml.impl.NpcData;
-import org.l2j.gameserver.data.xml.impl.SkillData;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
 import org.l2j.gameserver.enums.InstanceType;
 import org.l2j.gameserver.model.Location;
 import org.l2j.gameserver.model.WorldObject;
 import org.l2j.gameserver.model.actor.Creature;
 import org.l2j.gameserver.model.effects.EffectType;
 import org.l2j.gameserver.model.items.instance.Item;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.model.skills.SkillCaster;
 import org.l2j.gameserver.network.serverpackets.ActionFailed;
 import org.l2j.gameserver.network.serverpackets.NpcInfo;
@@ -291,7 +291,7 @@ public final class TamedBeast extends FeedableBeast {
             // if the owner has a lot of HP, then debuff the enemy with a random debuff among the available skills
             for (Skill skill : getTemplate().getSkills().values()) {
                 // if the skill is a buff, check if the owner has it already [ owner.getEffect(L2Skill skill) ]
-                if ((Rnd.get(5) < chance) && skill.hasEffectType(EffectType.CPHEAL, EffectType.HEAL, EffectType.MANAHEAL_BY_LEVEL, EffectType.MANAHEAL_PERCENT)) {
+                if ((Rnd.get(5) < chance) && skill.hasAnyEffectType(EffectType.CPHEAL, EffectType.HEAL, EffectType.MANAHEAL_BY_LEVEL, EffectType.MANAHEAL_PERCENT)) {
                     sitCastAndFollow(skill, _owner);
                 }
             }
@@ -376,7 +376,7 @@ public final class TamedBeast extends FeedableBeast {
 
                     // emulate a call to the owner using food, but bypass all checks for range, etc
                     // this also causes a call to the AI tasks handling feeding, which may call onReceiveFood as required.
-                    SkillCaster.triggerCast(owner, _tamedBeast, SkillData.getInstance().getSkill(foodTypeSkillId, 1));
+                    SkillCaster.triggerCast(owner, _tamedBeast, SkillEngine.getInstance().getSkill(foodTypeSkillId, 1));
                     owner.setTarget(oldTarget);
                 } else {
                     // if the owner has no food, the beast immediately despawns, except when it was only

@@ -1,6 +1,6 @@
 package org.l2j.gameserver.data.xml.impl;
 
-import org.l2j.gameserver.datatables.ItemTable;
+import org.l2j.gameserver.engine.item.ItemEngine;
 import org.l2j.gameserver.model.ArmorSet;
 import org.l2j.gameserver.model.holders.ArmorsetSkillHolder;
 import org.l2j.gameserver.model.items.ItemTemplate;
@@ -16,7 +16,7 @@ import org.w3c.dom.Node;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.stream.Stream;
+import java.util.stream.IntStream;
 
 import static org.l2j.commons.configuration.Configurator.getSettings;
 
@@ -67,7 +67,7 @@ public final class ArmorSetsData extends GameXmlReader {
                                     {
                                         final NamedNodeMap attrs = node.getAttributes();
                                         final int itemId = parseInteger(attrs, "id");
-                                        final ItemTemplate item = ItemTable.getInstance().getTemplate(itemId);
+                                        final ItemTemplate item = ItemEngine.getInstance().getTemplate(itemId);
                                         if (item == null) {
                                             LOGGER.warn("Attempting to register non existing required item: " + itemId + " to a set: " + f.getName());
                                         } else if (!set.addRequiredItem(itemId)) {
@@ -81,7 +81,7 @@ public final class ArmorSetsData extends GameXmlReader {
                                     {
                                         final NamedNodeMap attrs = node.getAttributes();
                                         final int itemId = parseInteger(attrs, "id");
-                                        final ItemTemplate item = ItemTable.getInstance().getTemplate(itemId);
+                                        final ItemTemplate item = ItemEngine.getInstance().getTemplate(itemId);
                                         if (item == null) {
                                             LOGGER.warn("Attempting to register non existing optional item: " + itemId + " to a set: " + f.getName());
                                         } else if (!set.addOptionalItem(itemId)) {
@@ -116,7 +116,7 @@ public final class ArmorSetsData extends GameXmlReader {
                             }
                         }
 
-                        Stream.concat(set.getRequiredItems().stream(), set.getOptionalItems().stream()).forEach(itemHolder -> _armorSetItems.computeIfAbsent(itemHolder, key -> new ArrayList<>()).add(set));
+                        IntStream.concat(set.getRequiredItems().stream(), set.getOptionalItems().stream()).forEach(itemHolder -> _armorSetItems.computeIfAbsent(itemHolder, key -> new ArrayList<>()).add(set));
                     }
                 }
             }

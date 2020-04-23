@@ -2,6 +2,7 @@ package org.l2j.gameserver.network.clientpackets;
 
 import org.l2j.commons.database.DatabaseFactory;
 import org.l2j.gameserver.Config;
+import org.l2j.gameserver.enums.InventorySlot;
 import org.l2j.gameserver.enums.PrivateStoreType;
 import org.l2j.gameserver.handler.AdminCommandHandler;
 import org.l2j.gameserver.instancemanager.CursedWeaponsManager;
@@ -48,7 +49,7 @@ public final class RequestDestroyItem extends ClientPacket {
 
         if (_count <= 0) {
             if (_count < 0) {
-                GameUtils.handleIllegalPlayerAction(activeChar, "[RequestDestroyItem] Character " + activeChar.getName() + " of account " + activeChar.getAccountName() + " tried to destroy item with oid " + _objectId + " but has count < 0!", Config.DEFAULT_PUNISH);
+                GameUtils.handleIllegalPlayerAction(activeChar, "[RequestDestroyItem] Character " + activeChar.getName() + " of account " + activeChar.getAccountName() + " tried to destroy item with oid " + _objectId + " but has count < 0!");
             }
             return;
         }
@@ -108,11 +109,11 @@ public final class RequestDestroyItem extends ClientPacket {
         }
 
         if (!itemToRemove.isStackable() && (count > 1)) {
-            GameUtils.handleIllegalPlayerAction(activeChar, "[RequestDestroyItem] Character " + activeChar.getName() + " of account " + activeChar.getAccountName() + " tried to destroy a non-stackable item with oid " + _objectId + " but has count > 1!", Config.DEFAULT_PUNISH);
+            GameUtils.handleIllegalPlayerAction(activeChar, "[RequestDestroyItem] Character " + activeChar.getName() + " of account " + activeChar.getAccountName() + " tried to destroy a non-stackable item with oid " + _objectId + " but has count > 1!");
             return;
         }
 
-        if (!activeChar.getInventory().canManipulateWithItemId(itemToRemove.getId())) {
+        if (!activeChar.getInventory().canManipulate(itemToRemove)) {
             activeChar.sendMessage("You cannot use this item.");
             return;
         }
@@ -121,7 +122,7 @@ public final class RequestDestroyItem extends ClientPacket {
             count = itemToRemove.getCount();
         }
 
-        if (itemToRemove.getItem().isPetItem()) {
+        if (itemToRemove.getTemplate().isPetItem()) {
             final Summon pet = activeChar.getPet();
             if ((pet != null) && (pet.getControlObjectId() == _objectId)) {
                 pet.unSummon(activeChar);
@@ -151,7 +152,7 @@ public final class RequestDestroyItem extends ClientPacket {
                 client.sendPacket(sm);
             }
 
-            final Item[] unequiped = activeChar.getInventory().unEquipItemInSlotAndRecord(itemToRemove.getLocationSlot());
+            var unequiped = activeChar.getInventory().unEquipItemInSlotAndRecord(InventorySlot.fromId(itemToRemove.getLocationSlot()));
 
             final InventoryUpdate iu = new InventoryUpdate();
             for (Item itm : unequiped) {

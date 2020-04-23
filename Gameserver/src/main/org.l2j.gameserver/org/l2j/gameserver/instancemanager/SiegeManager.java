@@ -3,16 +3,14 @@ package org.l2j.gameserver.instancemanager;
 import org.l2j.commons.database.DatabaseFactory;
 import org.l2j.commons.util.PropertiesParser;
 import org.l2j.gameserver.Config;
-import org.l2j.gameserver.data.xml.impl.SkillData;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
 import org.l2j.gameserver.model.Clan;
-import org.l2j.gameserver.model.WorldObject;
 import org.l2j.gameserver.model.Location;
 import org.l2j.gameserver.model.TowerSpawn;
 import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.model.entity.Castle;
 import org.l2j.gameserver.model.entity.Siege;
 import org.l2j.gameserver.model.interfaces.ILocational;
-import org.l2j.gameserver.model.skills.Skill;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +19,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.*;
 
-
+/**
+ * @author JoeAlisson
+ */
 public final class SiegeManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(SiegeManager.class);
 
@@ -40,10 +40,9 @@ public final class SiegeManager {
         load();
     }
 
-    public final void addSiegeSkills(Player character) {
-        for (Skill sk : SkillData.getInstance().getSiegeSkills(character.isNoble(), character.getClan().getCastleId() > 0)) {
-            character.addSkill(sk, false);
-        }
+    public final void addSiegeSkills(Player player) {
+        SkillEngine.getInstance().addSiegeSkills(player);
+
     }
 
     /**
@@ -76,10 +75,8 @@ public final class SiegeManager {
         return register;
     }
 
-    public final void removeSiegeSkills(Player character) {
-        for (Skill sk : SkillData.getInstance().getSiegeSkills(character.isNoble(), character.getClan().getCastleId() > 0)) {
-            character.removeSkill(sk);
-        }
+    public final void removeSiegeSkills(Player player) {
+        SkillEngine.getInstance().removeSiegeSkills(player);
     }
 
     private void load() {
@@ -139,11 +136,11 @@ public final class SiegeManager {
                     LOGGER.warn(": Error while loading flame tower(s) for " + castle.getName() + " castle.");
                 }
             }
-            _controlTowers.put(castle.getResidenceId(), controlTowers);
-            _flameTowers.put(castle.getResidenceId(), flameTowers);
+            _controlTowers.put(castle.getId(), controlTowers);
+            _flameTowers.put(castle.getId(), flameTowers);
 
             if (castle.getOwnerId() != 0) {
-                loadTrapUpgrade(castle.getResidenceId());
+                loadTrapUpgrade(castle.getId());
             }
         }
     }
@@ -173,20 +170,7 @@ public final class SiegeManager {
     }
 
     public final Siege getSiege(ILocational loc) {
-        return getSiege(loc.getX(), loc.getY(), loc.getZ());
-    }
-
-    public final Siege getSiege(WorldObject activeObject) {
-        return getSiege(activeObject.getX(), activeObject.getY(), activeObject.getZ());
-    }
-
-    public final Siege getSiege(int x, int y, int z) {
-        for (Castle castle : CastleManager.getInstance().getCastles()) {
-            if (castle.getSiege().checkIfInZone(x, y, z)) {
-                return castle.getSiege();
-            }
-        }
-        return null;
+        return CastleManager.getInstance().getSiegeOnLocation(loc);
     }
 
     public final int getSiegeClanMinLevel() {

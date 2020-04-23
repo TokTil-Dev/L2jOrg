@@ -185,6 +185,10 @@ public final class World {
         return players.values();
     }
 
+    public void forEachPlayer(Consumer<Player> action) {
+        players.values().forEach(action);
+    }
+
     /**
      * <B>If you have access to player objectId use {@link #findPlayer(int playerObjId)}</B>
      *
@@ -249,11 +253,15 @@ public final class World {
      * @param newRegion WorldRegion in wich the object will be add (not used)
      */
     public void addVisibleObject(WorldObject object, WorldRegion newRegion) {
-        if (isNull(newRegion) || !newRegion.isActive()) {
+        if (isNull(newRegion)) {
             return;
         }
+        newRegion.addVisibleObject(object);
 
-        forEachVisibleObject(object, WorldObject.class, wo -> beAwareOfEachOther(object, wo));
+        if(newRegion.isActive()) {
+            forEachVisibleObject(object, WorldObject.class, wo -> beAwareOfEachOther(object, wo));
+        }
+
     }
 
     private void beAwareOfEachOther(WorldObject object, WorldObject wo) {

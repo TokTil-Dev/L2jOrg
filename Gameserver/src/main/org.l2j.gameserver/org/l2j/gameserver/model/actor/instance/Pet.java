@@ -5,14 +5,16 @@ import org.l2j.commons.threading.ThreadPool;
 import org.l2j.commons.util.Rnd;
 import org.l2j.gameserver.Config;
 import org.l2j.gameserver.ai.CtrlIntention;
-import org.l2j.gameserver.data.sql.impl.CharSummonTable;
+import org.l2j.gameserver.data.sql.impl.PlayerSummonTable;
 import org.l2j.gameserver.data.sql.impl.SummonEffectsTable;
 import org.l2j.gameserver.data.sql.impl.SummonEffectsTable.SummonEffect;
-import org.l2j.gameserver.data.xml.impl.ExperienceData;
+import org.l2j.gameserver.data.xml.impl.LevelData;
 import org.l2j.gameserver.data.xml.impl.PetDataTable;
-import org.l2j.gameserver.data.xml.impl.SkillData;
-import org.l2j.gameserver.datatables.ItemTable;
+import org.l2j.gameserver.engine.item.ItemEngine;
+import org.l2j.gameserver.engine.skill.api.Skill;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
 import org.l2j.gameserver.enums.InstanceType;
+import org.l2j.gameserver.enums.InventorySlot;
 import org.l2j.gameserver.enums.ItemLocation;
 import org.l2j.gameserver.enums.PartyDistributionType;
 import org.l2j.gameserver.handler.IItemHandler;
@@ -25,20 +27,21 @@ import org.l2j.gameserver.model.PetLevelData;
 import org.l2j.gameserver.model.WorldObject;
 import org.l2j.gameserver.model.actor.Creature;
 import org.l2j.gameserver.model.actor.Summon;
-import org.l2j.gameserver.model.actor.stat.PetStat;
+import org.l2j.gameserver.model.actor.stat.PetStats;
 import org.l2j.gameserver.model.actor.templates.NpcTemplate;
 import org.l2j.gameserver.model.itemcontainer.Inventory;
 import org.l2j.gameserver.model.itemcontainer.PetInventory;
+import org.l2j.gameserver.model.items.BodyPart;
 import org.l2j.gameserver.model.items.CommonItem;
-import org.l2j.gameserver.model.items.ItemTemplate;
 import org.l2j.gameserver.model.items.Weapon;
 import org.l2j.gameserver.model.items.instance.Item;
 import org.l2j.gameserver.model.skills.AbnormalType;
 import org.l2j.gameserver.model.skills.BuffInfo;
 import org.l2j.gameserver.model.skills.EffectScope;
-import org.l2j.gameserver.model.skills.Skill;
 import org.l2j.gameserver.network.SystemMessageId;
 import org.l2j.gameserver.network.serverpackets.*;
+import org.l2j.gameserver.settings.CharacterSettings;
+import org.l2j.gameserver.settings.GeneralSettings;
 import org.l2j.gameserver.taskmanager.DecayTaskManager;
 import org.l2j.gameserver.util.GameUtils;
 import org.l2j.gameserver.world.World;
@@ -52,6 +55,8 @@ import java.sql.ResultSet;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
+
+import static org.l2j.commons.configuration.Configurator.getSettings;
 
 
 public class Pet extends Summon {
@@ -100,7 +105,7 @@ public class Pet extends Summon {
 
         _controlObjectId = control.getObjectId();
 
-        getStat().setLevel((byte) Math.max(level, PetDataTable.getInstance().getPetMinLevel(template.getId())));
+        getStats().setLevel((byte) Math.max(level, PetDataTable.getInstance().getPetMinLevel(template.getId())));
 
         _inventory = new PetInventory(this);
         _inventory.restore();
@@ -123,8 +128,8 @@ public class Pet extends Summon {
             pet.setTitle(owner.getName());
             if (data.isSynchLevel() && (pet.getLevel() != owner.getLevel())) {
                 final byte availableLevel = (byte) Math.min(data.getMaxLevel(), owner.getLevel());
-                pet.getStat().setLevel(availableLevel);
-                pet.getStat().setExp(pet.getStat().getExpForLevel(availableLevel));
+                pet.getStats().setLevel(availableLevel);
+                pet.getStats().setExp(pet.getStats().getExpForLevel(availableLevel));
             }
             World.getInstance().addPet(owner.getObjectId(), pet);
         }
@@ -154,8 +159,8 @@ public class Pet extends Summon {
                     exp = info.getPetMaxExp();
                 }
 
-                pet.getStat().setExp(exp);
-                pet.getStat().setSp(rset.getInt("sp"));
+                pet.getStats().setExp(exp);
+                pet.getStats().setSp(rset.getInt("sp"));
 
                 pet.getStatus().setCurrentHp(rset.getInt("curHp"));
                 pet.getStatus().setCurrentMp(rset.getInt("curMp"));
@@ -176,7 +181,7 @@ public class Pet extends Summon {
 
     public final PetLevelData getPetLevelData() {
         if (_leveldata == null) {
-            _leveldata = PetDataTable.getInstance().getPetLevelData(getTemplate().getId(), getStat().getLevel());
+            _leveldata = PetDataTable.getInstance().getPetLevelData(getTemplate().getId(), getStats().getLevel());
         }
 
         return _leveldata;
@@ -195,13 +200,13 @@ public class Pet extends Summon {
     }
 
     @Override
-    public PetStat getStat() {
-        return (PetStat) super.getStat();
+    public PetStats getStats() {
+        return (PetStats) super.getStats();
     }
 
     @Override
     public void initCharStat() {
-        setStat(new PetStat(this));
+        setStat(new PetStats(this));
     }
 
     public boolean isRespawned() {
@@ -241,7 +246,7 @@ public class Pet extends Summon {
     @Override
     public Item getActiveWeaponInstance() {
         if (_inventory != null) {
-            return _inventory.getItems(item -> (item.getItemLocation() == ItemLocation.PET_EQUIP) && (item.getItem().getBodyPart() == ItemTemplate.SLOT_R_HAND)).stream().findAny().orElse(null);
+            return _inventory.getItems(item -> (item.getItemLocation() == ItemLocation.PET_EQUIP) && (item.getBodyPart() == BodyPart.RIGHT_HAND)).stream().findAny().orElse(null);
         }
         return null;
     }
@@ -256,7 +261,7 @@ public class Pet extends Summon {
             return null;
         }
 
-        return (Weapon) weapon.getItem();
+        return (Weapon) weapon.getTemplate();
     }
 
     @Override
@@ -323,7 +328,7 @@ public class Pet extends Summon {
      *
      * @param process     : String Identifier of process triggering this action
      * @param itemId      : int Item identifier of the item to be destroyed
-     * @param count       : int Quantity of items to be destroyed
+     * @param count       : int Quantity of item to be destroyed
      * @param reference   : WorldObject Object referencing current action like NPC selling item or previous item in transformation
      * @param sendMessage : boolean Specifies whether to send message to Client about this action
      * @return boolean informing if the action was successfull
@@ -436,13 +441,13 @@ public class Pet extends Summon {
             // Remove from the ground!
             target.pickupMe(this);
 
-            if (Config.SAVE_DROPPED_ITEM) {
+            if (getSettings(GeneralSettings.class).saveDroppedItems()) {
                 ItemsOnGroundManager.getInstance().removeObject(target);
             }
         }
 
         // Herbs
-        if (target.getItem().hasExImmediateEffect()) {
+        if (target.getTemplate().hasExImmediateEffect()) {
             final IItemHandler handler = ItemHandler.getInstance().getHandler(target.getEtcItem());
             if (handler == null) {
                 LOGGER.warn("No item handler registered for item ID: " + target.getId() + ".");
@@ -450,7 +455,7 @@ public class Pet extends Summon {
                 handler.useItem(this, target, false);
             }
 
-            ItemTable.getInstance().destroyItem("Consume", target, getOwner(), null);
+            ItemEngine.getInstance().destroyItem("Consume", target, getOwner(), null);
             broadcastStatusUpdate();
         } else {
             if (target.getId() == CommonItem.ADENA) {
@@ -497,22 +502,21 @@ public class Pet extends Summon {
         _inventory.transferItemsToOwner();
         super.deleteMe(owner);
         destroyControlItem(owner, false); // this should also delete the pet from the db
-        CharSummonTable.getInstance().getPets().remove(getOwner().getObjectId());
+        PlayerSummonTable.getInstance().getPets().remove(getOwner().getObjectId());
     }
 
     @Override
     public boolean doDie(Creature killer) {
+        if (!super.doDie(killer, true)) {
+            return false;
+        }
         final Player owner = getOwner();
         if ((owner != null) && !owner.isInDuel() && (!isInsideZone(ZoneType.PVP) || isInsideZone(ZoneType.SIEGE))) {
             deathPenalty();
         }
-        if (!super.doDie(killer, true)) {
-            return false;
-        }
+
         stopFeed();
         sendPacket(SystemMessageId.THE_PET_HAS_BEEN_KILLED_IF_YOU_DON_T_RESURRECT_IT_WITHIN_24_HOURS_THE_PET_S_BODY_WILL_DISAPPEAR_ALONG_WITH_ALL_THE_PET_S_ITEMS);
-        DecayTaskManager.getInstance().add(this);
-        // do not decrease exp if is in duel, arena
         return true;
     }
 
@@ -685,7 +689,7 @@ public class Pet extends Summon {
             return;
         }
 
-        if (!Config.RESTORE_PET_ON_RECONNECT) {
+        if (!getSettings(CharacterSettings.class).restoreSummonOnReconnect()) {
             _restoreSummon = false;
         }
 
@@ -699,11 +703,11 @@ public class Pet extends Summon {
         try (Connection con = DatabaseFactory.getInstance().getConnection();
              PreparedStatement statement = con.prepareStatement(req)) {
             statement.setString(1, getName());
-            statement.setInt(2, getStat().getLevel());
+            statement.setInt(2, getStats().getLevel());
             statement.setDouble(3, getStatus().getCurrentHp());
             statement.setDouble(4, getStatus().getCurrentMp());
-            statement.setLong(5, getStat().getExp());
-            statement.setLong(6, getStat().getSp());
+            statement.setLong(5, getStats().getExp());
+            statement.setLong(6, getStats().getSp());
             statement.setInt(7, _curFed);
             statement.setInt(8, getOwner().getObjectId());
             statement.setString(9, String.valueOf(_restoreSummon)); // True restores pet on login
@@ -713,17 +717,17 @@ public class Pet extends Summon {
             _respawned = true;
 
             if (_restoreSummon) {
-                CharSummonTable.getInstance().getPets().put(getOwner().getObjectId(), getControlObjectId());
+                PlayerSummonTable.getInstance().getPets().put(getOwner().getObjectId(), getControlObjectId());
             } else {
-                CharSummonTable.getInstance().getPets().remove(getOwner().getObjectId());
+                PlayerSummonTable.getInstance().getPets().remove(getOwner().getObjectId());
             }
         } catch (Exception e) {
             LOGGER_PET.error("Failed to store Pet [ObjectId: " + getObjectId() + "] data", e);
         }
 
         final Item itemInst = getControlItem();
-        if ((itemInst != null) && (itemInst.getEnchantLevel() != getStat().getLevel())) {
-            itemInst.setEnchantLevel(getStat().getLevel());
+        if ((itemInst != null) && (itemInst.getEnchantLevel() != getStats().getLevel())) {
+            itemInst.setEnchantLevel(getStats().getLevel());
             itemInst.updateDatabase();
         }
     }
@@ -768,7 +772,7 @@ public class Pet extends Summon {
                     }
 
                     // Toggles are skipped, unless they are necessary to be always on.
-                    if (skill.isToggle() && !skill.isNecessaryToggle()) {
+                    if (skill.isToggle()) {
                         continue;
                     }
 
@@ -809,7 +813,7 @@ public class Pet extends Summon {
                     while (rset.next()) {
                         final int effectCurTime = rset.getInt("remaining_time");
 
-                        final Skill skill = SkillData.getInstance().getSkill(rset.getInt("skill_id"), rset.getInt("skill_level"));
+                        final Skill skill = SkillEngine.getInstance().getSkill(rset.getInt("skill_id"), rset.getInt("skill_level"));
                         if (skill == null) {
                             continue;
                         }
@@ -877,7 +881,7 @@ public class Pet extends Summon {
     public void restoreExp(double restorePercent) {
         if (_expBeforeDeath > 0) {
             // Restore the specified % of lost experience.
-            getStat().addExp(Math.round(((_expBeforeDeath - getStat().getExp()) * restorePercent) / 100));
+            getStats().addExp(Math.round(((_expBeforeDeath - getStats().getExp()) * restorePercent) / 100));
             _expBeforeDeath = 0;
         }
     }
@@ -885,67 +889,67 @@ public class Pet extends Summon {
     private void deathPenalty() {
         // TODO: Need Correct Penalty
 
-        final int lvl = getStat().getLevel();
+        final int lvl = getStats().getLevel();
         final double percentLost = (-0.07 * lvl) + 6.5;
 
         // Calculate the Experience loss
-        final long lostExp = Math.round(((getStat().getExpForLevel(lvl + 1) - getStat().getExpForLevel(lvl)) * percentLost) / 100);
+        final long lostExp = Math.round(((getStats().getExpForLevel(lvl + 1) - getStats().getExpForLevel(lvl)) * percentLost) / 100);
 
         // Get the Experience before applying penalty
-        _expBeforeDeath = getStat().getExp();
+        _expBeforeDeath = getStats().getExp();
 
         // Set the new Experience value of the Pet
-        getStat().addExp(-lostExp);
+        getStats().addExp(-lostExp);
     }
 
     @Override
     public void addExpAndSp(double addToExp, double addToSp) {
         if (getId() == 12564) // TODO: Remove this stupid hardcode.
         {
-            getStat().addExpAndSp(addToExp * Config.SINEATER_XP_RATE, addToSp);
+            getStats().addExpAndSp(addToExp * Config.SINEATER_XP_RATE, addToSp);
         } else {
-            getStat().addExpAndSp(addToExp * Config.PET_XP_RATE, addToSp);
+            getStats().addExpAndSp(addToExp * Config.PET_XP_RATE, addToSp);
         }
     }
 
     @Override
     public long getExpForThisLevel() {
-        if (getLevel() >= ExperienceData.getInstance().getMaxPetLevel()) {
+        if (getLevel() >= LevelData.getInstance().getMaxLevel()) {
             return 0;
         }
-        return getStat().getExpForLevel(getLevel());
+        return getStats().getExpForLevel(getLevel());
     }
 
     @Override
     public long getExpForNextLevel() {
-        if (getLevel() >= (ExperienceData.getInstance().getMaxPetLevel() - 1)) {
+        if (getLevel() >= (LevelData.getInstance().getMaxLevel() - 1)) {
             return 0;
         }
-        return getStat().getExpForLevel(getLevel() + 1);
+        return getStats().getExpForLevel(getLevel() + 1);
     }
 
     @Override
     public final int getLevel() {
-        return getStat().getLevel();
+        return getStats().getLevel();
     }
 
     public int getMaxFed() {
-        return getStat().getMaxFeed();
+        return getStats().getMaxFeed();
     }
 
     @Override
     public int getCriticalHit() {
-        return getStat().getCriticalHit();
+        return getStats().getCriticalHit();
     }
 
     @Override
     public int getMAtk() {
-        return getStat().getMAtk();
+        return getStats().getMAtk();
     }
 
     @Override
     public int getMDef() {
-        return getStat().getMDef();
+        return getStats().getMDef();
     }
 
     @Override
@@ -990,7 +994,7 @@ public class Pet extends Summon {
             if (_curWeightPenalty != newWeightPenalty) {
                 _curWeightPenalty = newWeightPenalty;
                 if (newWeightPenalty > 0) {
-                    addSkill(SkillData.getInstance().getSkill(4270, newWeightPenalty));
+                    addSkill(SkillEngine.getInstance().getSkill(4270, newWeightPenalty));
                     setIsOverloaded(getCurrentLoad() >= maxLoad);
                 } else {
                     removeSkill(getKnownSkill(4270), true);
@@ -1023,7 +1027,7 @@ public class Pet extends Summon {
 
     @Override
     public final int getWeapon() {
-        final Item weapon = _inventory.getPaperdollItem(Inventory.PAPERDOLL_RHAND);
+        final Item weapon = _inventory.getPaperdollItem(InventorySlot.RIGHT_HAND);
         if (weapon != null) {
             return weapon.getId();
         }
@@ -1032,7 +1036,7 @@ public class Pet extends Summon {
 
     @Override
     public final int getArmor() {
-        final Item weapon = _inventory.getPaperdollItem(Inventory.PAPERDOLL_CHEST);
+        final Item weapon = _inventory.getPaperdollItem(InventorySlot.CHEST);
         if (weapon != null) {
             return weapon.getId();
         }
@@ -1040,7 +1044,7 @@ public class Pet extends Summon {
     }
 
     public final int getJewel() {
-        final Item weapon = _inventory.getPaperdollItem(Inventory.PAPERDOLL_NECK);
+        final Item weapon = _inventory.getPaperdollItem(InventorySlot.NECK);
         if (weapon != null) {
             return weapon.getId();
         }

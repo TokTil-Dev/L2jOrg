@@ -1,9 +1,9 @@
 package org.l2j.gameserver.data.xml.impl;
 
-import org.l2j.gameserver.Config;
-import org.l2j.gameserver.datatables.ItemTable;
+import org.l2j.gameserver.engine.item.ItemEngine;
 import org.l2j.gameserver.model.StatsSet;
 import org.l2j.gameserver.model.holders.ItemHolder;
+import org.l2j.gameserver.settings.AttendanceSettings;
 import org.l2j.gameserver.settings.ServerSettings;
 import org.l2j.gameserver.util.GameXmlReader;
 import org.slf4j.Logger;
@@ -37,13 +37,13 @@ public class AttendanceRewardData extends GameXmlReader {
 
     @Override
     public void load() {
-        if (Config.ENABLE_ATTENDANCE_REWARDS) {
+        if (getSettings(AttendanceSettings.class).enabled()) {
             _rewards.clear();
             parseDatapackFile("data/AttendanceRewards.xml");
             _rewardsCount = _rewards.size();
-            LOGGER.info(getClass().getSimpleName() + ": Loaded " + _rewardsCount + " rewards.");
+            LOGGER.info("Loaded {}  rewards.", _rewardsCount );
         } else {
-            LOGGER.info(getClass().getSimpleName() + ": Disabled.");
+            LOGGER.info("Disabled.");
         }
     }
 
@@ -54,7 +54,7 @@ public class AttendanceRewardData extends GameXmlReader {
             final StatsSet set = new StatsSet(parseAttributes(rewardNode));
             final int itemId = set.getInt("id");
             final int itemCount = set.getInt("count");
-            if (ItemTable.getInstance().getTemplate(itemId) == null) {
+            if (ItemEngine.getInstance().getTemplate(itemId) == null) {
                 LOGGER.info(getClass().getSimpleName() + ": Item with id " + itemId + " does not exist.");
             } else {
                 _rewards.add(new ItemHolder(itemId, itemCount));

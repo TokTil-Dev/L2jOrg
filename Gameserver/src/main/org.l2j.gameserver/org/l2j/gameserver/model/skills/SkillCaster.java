@@ -1,19 +1,23 @@
 package org.l2j.gameserver.model.skills;
 
-import org.l2j.commons.util.Rnd;
-import org.l2j.gameserver.Config;
 import org.l2j.commons.threading.ThreadPool;
+import org.l2j.commons.util.Rnd;
+import org.l2j.commons.util.Util;
+import org.l2j.gameserver.Config;
 import org.l2j.gameserver.ai.CtrlEvent;
 import org.l2j.gameserver.ai.CtrlIntention;
 import org.l2j.gameserver.data.xml.ActionManager;
-import org.l2j.gameserver.datatables.ItemTable;
+import org.l2j.gameserver.engine.geo.GeoEngine;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.enums.ItemSkillType;
 import org.l2j.gameserver.enums.NextActionType;
+import org.l2j.gameserver.enums.ShotType;
 import org.l2j.gameserver.enums.StatusUpdateType;
-import org.l2j.gameserver.engine.geo.GeoEngine;
-import org.l2j.gameserver.model.*;
-import org.l2j.gameserver.model.actor.Creature;
+import org.l2j.gameserver.model.Location;
+import org.l2j.gameserver.model.PcCondOverride;
+import org.l2j.gameserver.model.WorldObject;
 import org.l2j.gameserver.model.actor.Attackable;
+import org.l2j.gameserver.model.actor.Creature;
 import org.l2j.gameserver.model.actor.Npc;
 import org.l2j.gameserver.model.actor.Summon;
 import org.l2j.gameserver.model.actor.instance.Player;
@@ -25,7 +29,6 @@ import org.l2j.gameserver.model.events.impl.character.npc.OnNpcSkillSee;
 import org.l2j.gameserver.model.events.returns.TerminateReturn;
 import org.l2j.gameserver.model.holders.ItemSkillHolder;
 import org.l2j.gameserver.model.holders.SkillUseHolder;
-import org.l2j.gameserver.model.items.ItemTemplate;
 import org.l2j.gameserver.model.items.Weapon;
 import org.l2j.gameserver.model.items.instance.Item;
 import org.l2j.gameserver.model.items.type.ActionType;
@@ -43,7 +46,6 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.ref.WeakReference;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ScheduledFuture;
@@ -223,7 +225,7 @@ public class SkillCaster implements Runnable {
                         }
 
                         // notify target AI about the attack
-                        if (((Creature) obj).hasAI() && !skill.hasEffectType(EffectType.HATE)) {
+                        if (((Creature) obj).hasAI() && !skill.hasAnyEffectType(EffectType.HATE)) {
                             ((Creature) obj).getAI().notifyEvent(CtrlEvent.EVT_ATTACKED, caster);
                         }
                     }
@@ -351,7 +353,7 @@ public class SkillCaster implements Runnable {
         }
 
         // Check if the caster has enough MP
-        if (caster.getCurrentMp() < (caster.getStat().getMpConsume(skill) + caster.getStat().getMpInitialConsume(skill))) {
+        if (caster.getCurrentMp() < (caster.getStats().getMpConsume(skill) + caster.getStats().getMpInitialConsume(skill))) {
             caster.sendPacket(SystemMessageId.NOT_ENOUGH_MP);
             caster.sendPacket(ActionFailed.STATIC_PACKET);
             return false;
@@ -394,7 +396,7 @@ public class SkillCaster implements Runnable {
             // Get the Item consumed by the spell
             final Item requiredItem = caster.getInventory().getItemByItemId(skill.getItemConsumeId());
             if ((requiredItem == null) || (requiredItem.getCount() < skill.getItemConsumeCount())) {
-                if (skill.hasEffectType(EffectType.SUMMON)) {
+                if (skill.hasAnyEffectType(EffectType.SUMMON)) {
                     final SystemMessage sm = SystemMessage.getSystemMessage(SystemMessageId.SUMMONING_A_SERVITOR_COSTS_S2_S1);
                     sm.addItemName(skill.getItemConsumeId());
                     sm.addInt(skill.getItemConsumeCount());
@@ -415,28 +417,6 @@ public class SkillCaster implements Runnable {
             if (player.isInOlympiadMode() && skill.isBlockedInOlympiad()) {
                 player.sendPacket(SystemMessageId.YOU_CANNOT_USE_THAT_SKILL_IN_A_OLYMPIAD_MATCH);
                 return false;
-            }
-
-            // Check if not in AirShip
-            if (player.isInAirShip() && !skill.hasEffectType(EffectType.REFUEL_AIRSHIP)) {
-                final SystemMessage sm = SystemMessage.getSystemMessage(SystemMessageId.S1_CANNOT_BE_USED_DUE_TO_UNSUITABLE_TERMS);
-                sm.addSkillName(skill);
-                player.sendPacket(sm);
-                return false;
-            }
-
-            if (player.getFame() < skill.getFamePointConsume()) {
-                player.sendPacket(SystemMessageId.YOU_DON_T_HAVE_ENOUGH_FAME_TO_DO_THAT);
-                return false;
-            }
-
-            // Consume clan reputation points
-            if (skill.getClanRepConsume() > 0) {
-                final Clan clan = player.getClan();
-                if ((clan == null) || (clan.getReputationScore() < skill.getClanRepConsume())) {
-                    player.sendPacket(SystemMessageId.THE_CLAN_REPUTATION_IS_TOO_LOW);
-                    return false;
-                }
             }
 
             // Check for skill reuse (fixes macro right click press exploit).
@@ -510,9 +490,9 @@ public class SkillCaster implements Runnable {
         }
 
         // Disable the skill during the re-use delay and create a task EnableSkill with Medium priority to enable it at the end of the re-use delay
-        int reuseDelay = caster.getStat().getReuseTime(_skill);
+        int reuseDelay = caster.getStats().getReuseTime(_skill);
         if (reuseDelay > 10) {
-            if (Formulas.calcSkillMastery(caster, _skill)) {
+            if (!_skill.isStatic()  && _skill.getOperateType() == SkillOperateType.A1 && Formulas.calcSkillMastery(caster, _skill)) {
                 reuseDelay = 100;
                 caster.sendPacket(SystemMessageId.A_SKILL_IS_READY_TO_BE_USED_AGAIN);
             }
@@ -527,14 +507,6 @@ public class SkillCaster implements Runnable {
         // Stop movement when casting. Except instant cast.
         if (!instantCast) {
             caster.getAI().clientStopMoving(null);
-        }
-
-        // Reduce talisman mana on skill use
-        if ((_skill.getReferenceItemId() > 0) && (ItemTable.getInstance().getTemplate(_skill.getReferenceItemId()).getBodyPart() == ItemTemplate.SLOT_TALISMAN)) {
-            final Item talisman = caster.getInventory().getItems(i -> i.getId() == _skill.getReferenceItemId(), Item::isEquipped).stream().findAny().orElse(null);
-            if (talisman != null) {
-                talisman.decreaseMana(false, talisman.useSkillDisTime());
-            }
         }
 
         if (target != caster) {
@@ -555,7 +527,7 @@ public class SkillCaster implements Runnable {
         }
 
         // Consume skill initial MP needed for cast. Retail sends it regardless if > 0 or not.
-        final int initmpcons = caster.getStat().getMpInitialConsume(_skill);
+        final int initmpcons = caster.getStats().getMpInitialConsume(_skill);
         if (initmpcons > 0) {
             if (initmpcons > caster.getCurrentMp()) {
                 caster.sendPacket(SystemMessageId.NOT_ENOUGH_MP);
@@ -575,51 +547,17 @@ public class SkillCaster implements Runnable {
         }
 
         if (isPlayer(caster) && !instantCast) {
-            // Send a system message to the player.
-            caster.sendPacket(_skill.getId() != 2046 ? SystemMessage.getSystemMessage(SystemMessageId.YOU_USE_S1).addSkillName(_skill) : SystemMessage.getSystemMessage(SystemMessageId.SUMMONING_YOUR_PET));
 
-            // Show the gauge bar for casting.
-            caster.sendPacket(new SetupGauge(caster.getObjectId(), SetupGauge.BLUE, displayedCastTime));
+            caster.sendPacket(_skill.getId() != 2046 ? SystemMessage.getSystemMessage(SystemMessageId.YOU_USE_S1).addSkillName(_skill) : SystemMessage.getSystemMessage(SystemMessageId.SUMMONING_YOUR_PET));
         }
 
         // Consume reagent item.
         if ((_skill.getItemConsumeId() > 0) && (_skill.getItemConsumeCount() > 0) && (caster.getInventory() != null)) {
             // Get the Item consumed by the spell.
             final Item requiredItem = caster.getInventory().getItemByItemId(_skill.getItemConsumeId());
-            if (_skill.isBad() || (requiredItem.getItem().getDefaultAction() == ActionType.NONE)) // Non reagent items are removed at finishSkill or item handler.
+            if (_skill.isBad() || (requiredItem.getAction() == ActionType.NONE)) // Non reagent items are removed at finishSkill or item handler.
             {
                 caster.destroyItem(_skill.toString(), requiredItem.getObjectId(), _skill.getItemConsumeCount(), caster, false);
-            }
-        }
-
-        if (isPlayer(caster)) {
-            final Player player = caster.getActingPlayer();
-
-            // Consume fame points.
-            if (_skill.getFamePointConsume() > 0) {
-                if (player.getFame() < _skill.getFamePointConsume()) {
-                    player.sendPacket(SystemMessageId.YOU_DON_T_HAVE_ENOUGH_FAME_TO_DO_THAT);
-                    return false;
-                }
-                player.setFame(player.getFame() - _skill.getFamePointConsume());
-
-                final SystemMessage msg = SystemMessage.getSystemMessage(SystemMessageId.S1_FAME_HAS_BEEN_CONSUMED);
-                msg.addInt(_skill.getFamePointConsume());
-                player.sendPacket(msg);
-            }
-
-            // Consume clan reputation points.
-            if (_skill.getClanRepConsume() > 0) {
-                final Clan clan = player.getClan();
-                if ((clan == null) || (clan.getReputationScore() < _skill.getClanRepConsume())) {
-                    player.sendPacket(SystemMessageId.THE_CLAN_REPUTATION_IS_TOO_LOW);
-                    return false;
-                }
-                clan.takeReputationScore(_skill.getClanRepConsume(), true);
-
-                final SystemMessage msg = SystemMessage.getSystemMessage(SystemMessageId.S1_CLAN_REPUTATION_HAS_BEEN_CONSUMED);
-                msg.addInt(_skill.getClanRepConsume());
-                player.sendPacket(msg);
             }
         }
 
@@ -674,14 +612,14 @@ public class SkillCaster implements Runnable {
             return false;
         }
 
-        if (_targets == null) {
-            _targets = Collections.singletonList(target);
+        if (Util.isNullOrEmpty(_targets)) {
+            return false;
         }
 
         final StatusUpdate su = new StatusUpdate(caster);
 
         // Consume the required MP or stop casting if not enough.
-        final double mpConsume = _skill.getMpConsume() > 0 ? caster.getStat().getMpConsume(_skill) : 0;
+        final double mpConsume = _skill.getMpConsume() > 0 ? caster.getStats().getMpConsume(_skill) : 0;
         if (mpConsume > 0) {
             if (mpConsume > caster.getCurrentMp()) {
                 caster.sendPacket(SystemMessageId.NOT_ENOUGH_MP);
@@ -722,7 +660,7 @@ public class SkillCaster implements Runnable {
         }
 
         // Consume skill reduced item on success.
-        if ((_item != null) && (_item.getItem().getDefaultAction() == ActionType.SKILL_REDUCE_ON_SKILL_SUCCESS) && (_skill.getItemConsumeId() > 0) && (_skill.getItemConsumeCount() > 0)) {
+        if ((_item != null) && (_item.getAction() == ActionType.SKILL_REDUCE_ON_SKILL_SUCCESS) && (_skill.getItemConsumeId() > 0) && (_skill.getItemConsumeCount() > 0)) {
             if (!caster.destroyItem(_skill.toString(), _item.getObjectId(), _skill.getItemConsumeCount(), target, true)) {
                 return false;
             }
@@ -745,8 +683,12 @@ public class SkillCaster implements Runnable {
         caster.notifyQuestEventSkillFinished(_skill, target);
 
         // On each repeat recharge shots before cast.
-        caster.rechargeShots(_skill.useSoulShot(), _skill.useSpiritShot(), false);
-
+        if(_skill.useSoulShot()) {
+            caster.consumeAndRechargeShots(ShotType.SOULSHOTS, _targets.size());
+        }
+        if(_skill.useSpiritShot()) {
+            caster.consumeAndRechargeShots(ShotType.SPIRITSHOTS, _targets.size());
+        }
         return true;
     }
 

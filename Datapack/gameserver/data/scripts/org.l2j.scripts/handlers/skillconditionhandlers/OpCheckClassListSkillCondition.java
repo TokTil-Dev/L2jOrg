@@ -1,67 +1,63 @@
-/*
- * This file is part of the L2J Mobius project.
- * 
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
 package handlers.skillconditionhandlers;
 
+import org.l2j.gameserver.engine.skill.api.SkillConditionFactory;
 import org.l2j.gameserver.enums.SkillConditionAffectType;
 import org.l2j.gameserver.model.StatsSet;
 import org.l2j.gameserver.model.WorldObject;
 import org.l2j.gameserver.model.actor.Creature;
 import org.l2j.gameserver.model.base.ClassId;
-import org.l2j.gameserver.model.skills.ISkillCondition;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.SkillCondition;
+import org.l2j.gameserver.engine.skill.api.Skill;
+import org.w3c.dom.Node;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
+import static java.util.Objects.nonNull;
 import static org.l2j.gameserver.util.GameUtils.isPlayer;
 
 /**
  * @author UnAfraid
+ * @author JoeAlisson
  */
-public class OpCheckClassListSkillCondition implements ISkillCondition
-{
-	private final List<ClassId> _classIds;
-	private final SkillConditionAffectType _affectType;
-	private final boolean _isWithin;
-	
-	public OpCheckClassListSkillCondition(StatsSet params)
-	{
-		_classIds = params.getEnumList("classIds", ClassId.class);
-		_affectType = params.getEnum("affectType", SkillConditionAffectType.class);
-		_isWithin = params.getBoolean("isWithin");
+public class OpCheckClassListSkillCondition implements SkillCondition {
+
+	public final Set<ClassId> classIds;
+	public final SkillConditionAffectType affectType;
+
+	private OpCheckClassListSkillCondition(Set<ClassId> classIds, SkillConditionAffectType affect) {
+		this.classIds = classIds;
+		this.affectType = affect;
 	}
-	
+
 	@Override
-	public boolean canUse(Creature caster, Skill skill, WorldObject target)
-	{
-		switch (_affectType)
-		{
-			case CASTER:
-			{
-				return isPlayer(caster) && (_isWithin == _classIds.stream().anyMatch(classId -> classId == caster.getActingPlayer().getClassId()));
+	public boolean canUse(Creature caster, Skill skill, WorldObject target) {
+		return switch (affectType) {
+			case CASTER -> isPlayer(caster) && classIds.contains(caster.getActingPlayer().getClassId());
+			case TARGET -> isPlayer(target) && classIds.contains(target.getActingPlayer().getClassId());
+			default ->  false;
+		};
+	}
+
+	public static final class Factory extends SkillConditionFactory {
+
+		@Override
+		public SkillCondition create(Node xmlNode) {
+			var affect = parseEnum(xmlNode.getAttributes(), SkillConditionAffectType.class, "affect");
+			var listNode = xmlNode.getFirstChild();
+			Set<ClassId> classIds = Collections.emptySet();
+			if(nonNull(listNode)) {
+				classIds = Arrays.stream(listNode.getTextContent().split(" ")).map(ClassId::valueOf).collect(Collectors.toSet());
 			}
-			case TARGET:
-			{
-				if (isPlayer(target))
-				{
-					return _isWithin == _classIds.stream().anyMatch(classId -> classId.getId() == target.getActingPlayer().getClassId().getId());
-				}
-				break;
-			}
+			return new OpCheckClassListSkillCondition(classIds, affect);
 		}
-		return false;
+
+		@Override
+		public String conditionName() {
+			return "class";
+		}
 	}
 }

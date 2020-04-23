@@ -1,44 +1,28 @@
-/*
- * This file is part of the L2J Mobius project.
- * 
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
 package handlers.effecthandlers;
 
-import org.l2j.gameserver.data.xml.impl.SkillData;
+import org.l2j.gameserver.engine.skill.api.Skill;
+import org.l2j.gameserver.engine.skill.api.SkillEffectFactory;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
 import org.l2j.gameserver.model.StatsSet;
 import org.l2j.gameserver.model.actor.Creature;
 import org.l2j.gameserver.model.effects.AbstractEffect;
 import org.l2j.gameserver.model.holders.SkillHolder;
 import org.l2j.gameserver.model.items.instance.Item;
-import org.l2j.gameserver.model.skills.BuffInfo;
-import org.l2j.gameserver.model.skills.Skill;
 import org.l2j.gameserver.model.skills.SkillCaster;
+
+import static java.util.Objects.nonNull;
 
 /**
  * Call Skill effect implementation.
  * @author NosBit
+ * @author JoeAlisson
  */
-public final class CallSkill extends AbstractEffect
-{
-	private final SkillHolder _skill;
-	private final int _skillLevelScaleTo;
+public final class CallSkill extends AbstractEffect {
+
+	private final SkillHolder skill;
 	
-	public CallSkill(StatsSet params)
-	{
-		_skill = new SkillHolder(params.getInt("skillId"), params.getInt("skillLevel", 1), params.getInt("skillSubLevel", 0));
-		_skillLevelScaleTo = params.getInt("skillLevelScaleTo", 0);
+	private CallSkill(StatsSet params) {
+		skill = new SkillHolder(params.getInt("skill"), params.getInt("power", 1));
 	}
 	
 	@Override
@@ -48,49 +32,38 @@ public final class CallSkill extends AbstractEffect
 	}
 	
 	@Override
-	public void instant(Creature effector, Creature effected, Skill skill, Item item)
-	{
+	public void instant(Creature effector, Creature effected, Skill skill, Item item) {
 		Skill triggerSkill = null;
-		if (_skillLevelScaleTo <= 0)
-		{
-			// Mobius: Use 0 to trigger max effector learned skill level.
-			if (_skill.getSkillLevel() == 0)
-			{
-				final int knownLevel = effector.getSkillLevel(_skill.getSkillId());
-				if (knownLevel > 0)
-				{
-					triggerSkill = SkillData.getInstance().getSkill(_skill.getSkillId(), knownLevel, _skill.getSkillSubLevel());
-				}
-				else
-				{
-					LOGGER.warn("Player " + effector + " called unknown skill " + _skill + " triggered by " + skill + " CallSkill.");
-				}
+		// Mobius: Use 0 to trigger max effector learned skill level.
+		if (this.skill.getLevel() == 0) {
+			final int knownLevel = effector.getSkillLevel(this.skill.getSkillId());
+
+			if (knownLevel > 0) {
+				triggerSkill = SkillEngine.getInstance().getSkill(this.skill.getSkillId(), knownLevel);
+			} else {
+				LOGGER.warn("Player {} called unknown skill {} triggered by {} CallSkill.", effector, this.skill, skill);
 			}
-			else
-			{
-				triggerSkill = _skill.getSkill();
-			}
-		}
-		else
-		{
-			final BuffInfo buffInfo = effected.getEffectList().getBuffInfoBySkillId(_skill.getSkillId());
-			if (buffInfo != null)
-			{
-				triggerSkill = SkillData.getInstance().getSkill(_skill.getSkillId(), Math.min(_skillLevelScaleTo, buffInfo.getSkill().getLevel() + 1));
-			}
-			else
-			{
-				triggerSkill = _skill.getSkill();
-			}
+		} else {
+			triggerSkill = this.skill.getSkill();
 		}
 		
-		if (triggerSkill != null)
-		{
+		if (nonNull(triggerSkill)) {
 			SkillCaster.triggerCast(effector, effected, triggerSkill);
+		} else {
+			LOGGER.warn("Skill not found effect called from {}", skill);
 		}
-		else
-		{
-			LOGGER.warn("Skill not found effect called from " + skill);
+	}
+
+	public static class Factory implements SkillEffectFactory {
+
+		@Override
+		public AbstractEffect create(StatsSet data) {
+			return new CallSkill(data);
+		}
+
+		@Override
+		public String effectName() {
+			return "call-skill";
 		}
 	}
 }

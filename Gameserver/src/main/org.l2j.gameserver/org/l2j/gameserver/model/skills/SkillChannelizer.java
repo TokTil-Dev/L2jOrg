@@ -1,9 +1,10 @@
 package org.l2j.gameserver.model.skills;
 
 import org.l2j.commons.threading.ThreadPool;
-import org.l2j.gameserver.data.xml.impl.SkillData;
-import org.l2j.gameserver.enums.ShotType;
 import org.l2j.gameserver.engine.geo.GeoEngine;
+import org.l2j.gameserver.engine.skill.api.Skill;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
+import org.l2j.gameserver.enums.ShotType;
 import org.l2j.gameserver.model.WorldObject;
 import org.l2j.gameserver.model.actor.Creature;
 import org.l2j.gameserver.model.actor.instance.Player;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 
+import static org.l2j.commons.util.Util.doIfNonNull;
 import static org.l2j.gameserver.util.GameUtils.isCreature;
 import static org.l2j.gameserver.util.GameUtils.isPlayer;
 
@@ -39,14 +41,6 @@ public class SkillChannelizer implements Runnable {
         _channelizer = channelizer;
     }
 
-    public Creature getChannelizer() {
-        return _channelizer;
-    }
-
-    public List<Creature> getChannelized() {
-        return _channelized;
-    }
-
     public boolean hasChannelized() {
         return _channelized != null;
     }
@@ -54,7 +48,7 @@ public class SkillChannelizer implements Runnable {
     public void startChanneling(Skill skill) {
         // Verify for same status.
         if (isChanneling()) {
-            LOGGER.warn("Character: " + toString() + " is attempting to channel skill but he already does!");
+            LOGGER.warn("Character: {} is attempting to channel skill but he already does!", _channelizer);
             return;
         }
 
@@ -144,12 +138,15 @@ public class SkillChannelizer implements Runnable {
                 }
 
                 if (skill.getChannelingSkillId() > 0) {
-                    final int maxSkillLevel = SkillData.getInstance().getMaxLevel(skill.getChannelingSkillId());
+                    final int maxSkillLevel = SkillEngine.getInstance().getMaxLevel(skill.getChannelingSkillId());
                     final int skillLevel = Math.min(character.getSkillChannelized().getChannerlizersSize(skill.getChannelingSkillId()), maxSkillLevel);
+                    if (skillLevel == 0) {
+                        continue;
+                    }
                     final BuffInfo info = character.getEffectList().getBuffInfoBySkillId(skill.getChannelingSkillId());
 
                     if ((info == null) || (info.getSkill().getLevel() < skillLevel)) {
-                        final Skill channeledSkill = SkillData.getInstance().getSkill(skill.getChannelingSkillId(), skillLevel);
+                        final Skill channeledSkill = SkillEngine.getInstance().getSkill(skill.getChannelingSkillId(), skillLevel);
                         if (channeledSkill == null) {
                             LOGGER.warn(": Non existent channeling skill requested: " + skill);
                             _channelizer.abortCast();
@@ -170,19 +167,16 @@ public class SkillChannelizer implements Runnable {
                 } else {
                     skill.applyChannelingEffects(_channelizer, character);
                 }
+            }
 
-                // Reduce shots.
-                if (skill.useSpiritShot()) {
-                    _channelizer.unchargeShot(_channelizer.isChargedShot(ShotType.BLESSED_SPIRITSHOTS) ? ShotType.BLESSED_SPIRITSHOTS : ShotType.SPIRITSHOTS);
-                } else {
-                    _channelizer.unchargeShot(_channelizer.isChargedShot(ShotType.BLESSED_SOULSHOTS) ? ShotType.BLESSED_SOULSHOTS : ShotType.SOULSHOTS);
-                }
-
-                // Shots are re-charged every cast.
-                _channelizer.rechargeShots(skill.useSoulShot(), skill.useSpiritShot(), false);
+            if(skill.useSoulShot()) {
+                _channelizer.consumeAndRechargeShots(ShotType.SOULSHOTS, targetList.size());
+            }
+            if(skill.useSpiritShot()) {
+                _channelizer.consumeAndRechargeShots(ShotType.SPIRITSHOTS, targetList.size());
             }
         } catch (Exception e) {
-            LOGGER.warn("Error while channelizing skill: " + skill + " channelizer: " + _channelizer + " channelized: " + channelized, e);
+            LOGGER.warn("Error while channelizing skill: {} channelizer: {} channelized: {}", skill, _channelizer, channelized, e);
         }
     }
 }

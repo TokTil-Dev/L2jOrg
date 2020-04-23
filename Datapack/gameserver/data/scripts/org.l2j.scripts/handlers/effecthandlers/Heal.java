@@ -1,5 +1,6 @@
 package handlers.effecthandlers;
 
+import org.l2j.gameserver.engine.skill.api.SkillEffectFactory;
 import org.l2j.gameserver.enums.ShotType;
 import org.l2j.gameserver.model.StatsSet;
 import org.l2j.gameserver.model.actor.Creature;
@@ -7,26 +8,27 @@ import org.l2j.gameserver.model.effects.AbstractEffect;
 import org.l2j.gameserver.model.effects.EffectFlag;
 import org.l2j.gameserver.model.effects.EffectType;
 import org.l2j.gameserver.model.items.instance.Item;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.model.stats.Formulas;
-import org.l2j.gameserver.model.stats.Stats;
+import org.l2j.gameserver.model.stats.Stat;
 import org.l2j.gameserver.network.SystemMessageId;
 import org.l2j.gameserver.network.serverpackets.ExMagicAttackInfo;
-import org.l2j.gameserver.network.serverpackets.SystemMessage;
 
+import static java.util.Objects.nonNull;
+import static org.l2j.gameserver.network.serverpackets.SystemMessage.getSystemMessage;
 import static org.l2j.gameserver.util.GameUtils.*;
 
 /**
  * Heal effect implementation.
  * @author UnAfraid
+ * @author JoeAlisson
  */
-public final class Heal extends AbstractEffect
-{
-	private final double _power;
+public final class Heal extends AbstractEffect {
+	private final double power;
 	
-	public Heal(StatsSet params)
+	private Heal(StatsSet params)
 	{
-		_power = params.getDouble("power", 0);
+		power = params.getDouble("power", 0);
 	}
 	
 	@Override
@@ -42,55 +44,41 @@ public final class Heal extends AbstractEffect
 	}
 	
 	@Override
-	public void instant(Creature effector, Creature effected, Skill skill, Item item)
-	{
-		if (effected.isDead() || isDoor(effected) || effected.isHpBlocked())
-		{
+	public void instant(Creature effector, Creature effected, Skill skill, Item item) {
+		if (effected.isDead() || isDoor(effected) || effected.isHpBlocked()) {
 			return;
 		}
 		
-		if ((effected != effector) && effected.isAffected(EffectFlag.FACEOFF))
-		{
+		if (effected != effector && effected.isAffected(EffectFlag.FACEOFF)) {
 			return;
 		}
 		
-		double amount = _power;
+		double amount = power;
 
-		if ((item != null) && (item.isPotion() || item.isElixir()))
-		{
-			amount += effected.getStat().getValue(Stats.ADDITIONAL_POTION_HP, 0);
+		if (nonNull(item) && (item.isPotion() || item.isElixir())) {
+			amount += effected.getStats().getValue(Stat.ADDITIONAL_POTION_HP, 0);
 		}
 
 		double staticShotBonus = 0;
-		double mAtkMul = 1;
-		final boolean sps = skill.isMagic() && effector.isChargedShot(ShotType.SPIRITSHOTS);
-		final boolean bss = skill.isMagic() && effector.isChargedShot(ShotType.BLESSED_SPIRITSHOTS);
-		final double shotsBonus = effector.getStat().getValue(Stats.SHOTS_BONUS);
-		if (((sps || bss) && (isPlayer(effector) && effector.getActingPlayer().isMageClass())) || isSummon(effector))
-		{
-			staticShotBonus = skill.getMpConsume(); // static bonus for spiritshots
-			mAtkMul = bss ? 4 * shotsBonus : 2 * shotsBonus;
-			staticShotBonus *= bss ? 2.4 : 1.0;
-		}
-		else if ((sps || bss) && isNpc(effector))
-		{
+		double mAtkMul = skill.isMagic() ? effector.chargedShotBonus(ShotType.SPIRITSHOTS) : 1;
+
+		if (mAtkMul > 1 && (isPlayer(effector) && effector.getActingPlayer().isMageClass() || isSummon(effector))) {
+			staticShotBonus = skill.getMpConsume();
+			staticShotBonus *= mAtkMul >= 4 ? 2.4 : 1.0; // 2.4 if is blessed spiritshots TODO improve
+		} else if (mAtkMul > 1  && isNpc(effector)) {
 			staticShotBonus = 2.4 * skill.getMpConsume(); // always blessed spiritshots
-			mAtkMul = 4 * shotsBonus;
 		}
-		else
-		{
+		else {
 			// shot dynamic bonus
-			mAtkMul = bss ? mAtkMul * 4 : mAtkMul + 1;
+			mAtkMul = mAtkMul >= 4 ? mAtkMul * 4 : mAtkMul + 1;
 		}
 		
-		if (!skill.isStatic())
-		{
+		if (!skill.isStatic()) {
 			amount += staticShotBonus + Math.sqrt(mAtkMul * effector.getMAtk());
-			amount *= effected.getStat().getValue(Stats.HEAL_EFFECT, 1);
-			amount += effected.getStat().getValue(Stats.HEAL_EFFECT_ADD, 0);
+			amount *= effected.getStats().getValue(Stat.HEAL_RECEIVE, 1);
+			amount = effector.getStats().getValue(Stat.HEAL_POWER, amount);
 			// Heal critic, since CT2.3 Gracia Final
-			if (skill.isMagic() && Formulas.calcCrit(skill.getMagicCriticalRate(), effector, effected, skill))
-			{
+			if (skill.isMagic() && Formulas.calcCrit(skill.getMagicCriticalRate(), effector, effected, skill)) {
 				amount *= 3;
 				effector.sendPacket(SystemMessageId.M_CRITICAL);
 				effector.sendPacket(new ExMagicAttackInfo(effector.getObjectId(), effected.getObjectId(), ExMagicAttackInfo.CRITICAL_HEAL));
@@ -103,32 +91,33 @@ public final class Heal extends AbstractEffect
 		
 		// Prevents overheal
 		amount = Math.min(amount, effected.getMaxRecoverableHp() - effected.getCurrentHp());
-		if (amount != 0)
-		{
+		if (amount != 0) {
 			final double newHp = amount + effected.getCurrentHp();
 			effected.setCurrentHp(newHp, false);
 			effected.broadcastStatusUpdate(effector);
 		}
 		
-		if (isPlayer(effected))
-		{
-			if (skill.getId() == 4051)
-			{
+		if (isPlayer(effected)) {
+			if (skill.getId() == 4051) {
 				effected.sendPacket(SystemMessageId.REJUVENATING_HP);
+			} else if (isPlayer(effector) && (effector != effected)) {
+				effected.sendPacket(getSystemMessage(SystemMessageId.S2_HP_HAS_BEEN_RESTORED_BY_C1).addString(effector.getName()).addInt((int) amount));
+			} else {
+				effected.sendPacket(getSystemMessage(SystemMessageId.S1_HP_HAS_BEEN_RESTORED).addInt((int) amount));
 			}
-			else if (isPlayer(effector) && (effector != effected))
-			{
-				final SystemMessage sm = SystemMessage.getSystemMessage(SystemMessageId.S2_HP_HAS_BEEN_RESTORED_BY_C1);
-				sm.addString(effector.getName());
-				sm.addInt((int) amount);
-				effected.sendPacket(sm);
-			}
-			else
-			{
-				final SystemMessage sm = SystemMessage.getSystemMessage(SystemMessageId.S1_HP_HAS_BEEN_RESTORED);
-				sm.addInt((int) amount);
-				effected.sendPacket(sm);
-			}
+		}
+	}
+
+	public static class Factory implements SkillEffectFactory {
+
+		@Override
+		public AbstractEffect create(StatsSet data) {
+			return new Heal(data);
+		}
+
+		@Override
+		public String effectName() {
+			return "Heal";
 		}
 	}
 }

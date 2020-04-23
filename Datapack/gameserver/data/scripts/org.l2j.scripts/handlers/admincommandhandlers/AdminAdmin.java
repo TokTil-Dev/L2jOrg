@@ -20,6 +20,8 @@ import org.l2j.gameserver.Config;
 import org.l2j.gameserver.data.xml.impl.AdminData;
 import org.l2j.gameserver.enums.ChatType;
 import org.l2j.gameserver.handler.IAdminCommandHandler;
+import org.l2j.gameserver.settings.ChatSettings;
+import org.l2j.gameserver.settings.RateSettings;
 import org.l2j.gameserver.world.World;
 import org.l2j.gameserver.model.WorldObject;
 import org.l2j.gameserver.model.actor.instance.Player;
@@ -35,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.StringTokenizer;
 
+import static org.l2j.commons.configuration.Configurator.getSettings;
 import static org.l2j.commons.util.Util.isDigit;
 import static org.l2j.gameserver.util.GameUtils.isPlayer;
 
@@ -219,25 +222,25 @@ public class AdminAdmin implements IAdminCommandHandler
 				final String mode = command.substring(15);
 				if (mode.equalsIgnoreCase("on"))
 				{
-					activeChar.setTradeRefusal(true);
+					activeChar.setTradeRefusing(true);
 					BuilderUtil.sendSysMessage(activeChar, "Trade refusal enabled.");
 				}
 				else if (mode.equalsIgnoreCase("off"))
 				{
-					activeChar.setTradeRefusal(false);
+					activeChar.setTradeRefusing(false);
 					BuilderUtil.sendSysMessage(activeChar, "Trade refusal disabled.");
 				}
 			}
 			catch (Exception ex)
 			{
-				if (activeChar.getTradeRefusal())
+				if (activeChar.isTradeRefusing())
 				{
-					activeChar.setTradeRefusal(false);
+					activeChar.setTradeRefusing(false);
 					BuilderUtil.sendSysMessage(activeChar, "Trade refusal disabled.");
 				}
 				else
 				{
-					activeChar.setTradeRefusal(true);
+					activeChar.setTradeRefusing(true);
 					BuilderUtil.sendSysMessage(activeChar, "Trade refusal enabled.");
 				}
 			}
@@ -260,7 +263,7 @@ public class AdminAdmin implements IAdminCommandHandler
 				{
 					case "RateXp":
 					{
-						Config.RATE_XP = Float.valueOf(pValue);
+						getSettings(RateSettings.class).setXp(Float.parseFloat(pValue));
 						break;
 					}
 					case "RateSp":
@@ -333,9 +336,10 @@ public class AdminAdmin implements IAdminCommandHandler
 						break;
 					}
 					final Player targetPlayer = target.getActingPlayer();
-					if (targetPlayer.getLevel() < Config.WORLD_CHAT_MIN_LEVEL)
+					var worldChatMinLevel = getSettings(ChatSettings.class).worldChatMinLevel();
+					if (targetPlayer.getLevel() < worldChatMinLevel)
 					{
-						BuilderUtil.sendSysMessage(activeChar, "Your target's level is below the minimum: " + Config.WORLD_CHAT_MIN_LEVEL);
+						BuilderUtil.sendSysMessage(activeChar, "Your target's level is below the minimum: " + worldChatMinLevel);
 						break;
 					}
 					BuilderUtil.sendSysMessage(activeChar, targetPlayer.getName() + ": has used world chat " + targetPlayer.getWorldChatUsed() + " times out of maximum " + targetPlayer.getWorldChatPoints() + " times.");
@@ -344,16 +348,16 @@ public class AdminAdmin implements IAdminCommandHandler
 				case "set":
 				{
 					final WorldObject target = activeChar.getTarget();
-					if ((target == null) || !isPlayer(target))
-					{
+					if (!isPlayer(target)) {
 						activeChar.sendPacket(SystemMessageId.THAT_IS_AN_INCORRECT_TARGET);
 						break;
 					}
 					
 					final Player targetPlayer = target.getActingPlayer();
-					if (targetPlayer.getLevel() < Config.WORLD_CHAT_MIN_LEVEL)
+					var worldChatMinLevel = getSettings(ChatSettings.class).worldChatMinLevel();
+					if (targetPlayer.getLevel() < worldChatMinLevel)
 					{
-						BuilderUtil.sendSysMessage(activeChar, "Your target's level is below the minimum: " + Config.WORLD_CHAT_MIN_LEVEL);
+						BuilderUtil.sendSysMessage(activeChar, "Your target's level is below the minimum: " + worldChatMinLevel);
 						break;
 					}
 					
@@ -372,8 +376,7 @@ public class AdminAdmin implements IAdminCommandHandler
 					
 					BuilderUtil.sendSysMessage(activeChar, targetPlayer.getName() + ": times used changed from " + targetPlayer.getWorldChatPoints() + " to " + valueToken);
 					targetPlayer.setWorldChatUsed(Integer.parseInt(valueToken));
-					if (Config.ENABLE_WORLD_CHAT)
-					{
+					if (getSettings(ChatSettings.class).worldChatEnabled()) {
 						targetPlayer.sendPacket(new ExWorldChatCnt(targetPlayer));
 					}
 					break;
@@ -465,7 +468,7 @@ public class AdminAdmin implements IAdminCommandHandler
 		replyMSG.append("<center><table width=270><tr><td width=60><button value=\"Main\" action=\"bypass -h admin_admin\" width=60 height=25 back=\"L2UI_ct1.button_df\" fore=\"L2UI_ct1.button_df\"></td><td width=150>Config Server Panel</td><td width=60><button value=\"Back\" action=\"bypass -h admin_admin4\" width=60 height=25 back=\"L2UI_ct1.button_df\" fore=\"L2UI_ct1.button_df\"></td></tr></table></center><br>");
 		replyMSG.append("<center><table width=260><tr><td width=140></td><td width=40></td><td width=40></td></tr>");
 		replyMSG.append("<tr><td><font color=\"00AA00\">Drop:</font></td><td></td><td></td></tr>");
-		replyMSG.append("<tr><td><font color=\"LEVEL\">Rate EXP</font> = " + Config.RATE_XP + "</td><td><edit var=\"param1\" width=40 height=15></td><td><button value=\"Set\" action=\"bypass -h admin_setconfig RateXp $param1\" width=40 height=25 back=\"L2UI_ct1.button_df\" fore=\"L2UI_ct1.button_df\"></td></tr>");
+		replyMSG.append("<tr><td><font color=\"LEVEL\">Rate EXP</font> = ").append(getSettings(RateSettings.class).xp()).append("</td><td><edit var=\"param1\" width=40 height=15></td><td><button value=\"Set\" action=\"bypass -h admin_setconfig RateXp $param1\" width=40 height=25 back=\"L2UI_ct1.button_df\" fore=\"L2UI_ct1.button_df\"></td></tr>");
 		replyMSG.append("<tr><td><font color=\"LEVEL\">Rate SP</font> = " + Config.RATE_SP + "</td><td><edit var=\"param2\" width=40 height=15></td><td><button value=\"Set\" action=\"bypass -h admin_setconfig RateSp $param2\" width=40 height=25 back=\"L2UI_ct1.button_df\" fore=\"L2UI_ct1.button_df\"></td></tr>");
 		replyMSG.append("<tr><td><font color=\"LEVEL\">Rate Drop Spoil</font> = " + Config.RATE_SPOIL_DROP_CHANCE_MULTIPLIER + "</td><td><edit var=\"param4\" width=40 height=15></td><td><button value=\"Set\" action=\"bypass -h admin_setconfig RateDropSpoil $param4\" width=40 height=25 back=\"L2UI_ct1.button_df\" fore=\"L2UI_ct1.button_df\"></td></tr>");
 		replyMSG.append("<tr><td width=140></td><td width=40></td><td width=40></td></tr>");

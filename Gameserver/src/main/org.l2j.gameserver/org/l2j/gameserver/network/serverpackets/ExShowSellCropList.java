@@ -1,15 +1,17 @@
 package org.l2j.gameserver.network.serverpackets;
 
 import org.l2j.gameserver.instancemanager.CastleManorManager;
-import org.l2j.gameserver.model.CropProcure;
+import org.l2j.gameserver.data.database.data.CropProcure;
 import org.l2j.gameserver.model.Seed;
-import org.l2j.gameserver.model.itemcontainer.PcInventory;
+import org.l2j.gameserver.model.itemcontainer.PlayerInventory;
 import org.l2j.gameserver.model.items.instance.Item;
 import org.l2j.gameserver.network.GameClient;
 import org.l2j.gameserver.network.ServerPacketId;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.l2j.commons.util.Util.doIfNonNull;
 
 /**
  * @author l3x
@@ -19,18 +21,15 @@ public final class ExShowSellCropList extends ServerPacket {
     private final Map<Integer, Item> _cropsItems = new HashMap<>();
     private final Map<Integer, CropProcure> _castleCrops = new HashMap<>();
 
-    public ExShowSellCropList(PcInventory inventory, int manorId) {
+    public ExShowSellCropList(PlayerInventory inventory, int manorId) {
         _manorId = manorId;
-        for (int cropId : CastleManorManager.getInstance().getCropIds()) {
-            final Item item = inventory.getItemByItemId(cropId);
-            if (item != null) {
-                _cropsItems.put(cropId, item);
-            }
-        }
+        CastleManorManager.getInstance().getCropIds().forEach(cropId -> {
+            doIfNonNull(inventory.getItemByItemId(cropId), item -> _cropsItems.put(cropId, item));
+        });
 
         for (CropProcure crop : CastleManorManager.getInstance().getCropProcure(_manorId, false)) {
-            if (_cropsItems.containsKey(crop.getId()) && (crop.getAmount() > 0)) {
-                _castleCrops.put(crop.getId(), crop);
+            if (_cropsItems.containsKey(crop.getSeedId()) && (crop.getAmount() > 0)) {
+                _castleCrops.put(crop.getSeedId(), crop);
             }
         }
     }

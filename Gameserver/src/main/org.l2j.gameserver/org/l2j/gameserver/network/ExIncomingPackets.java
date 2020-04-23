@@ -19,10 +19,9 @@ import org.l2j.gameserver.network.clientpackets.ceremonyofchaos.RequestCuriousHo
 import org.l2j.gameserver.network.clientpackets.ceremonyofchaos.RequestJoinCuriousHouse;
 import org.l2j.gameserver.network.clientpackets.commission.*;
 import org.l2j.gameserver.network.clientpackets.compound.*;
+import org.l2j.gameserver.network.clientpackets.costume.*;
 import org.l2j.gameserver.network.clientpackets.crystalization.RequestCrystallizeEstimate;
 import org.l2j.gameserver.network.clientpackets.crystalization.RequestCrystallizeItemCancel;
-import org.l2j.gameserver.network.clientpackets.mission.RequestOneDayRewardReceive;
-import org.l2j.gameserver.network.clientpackets.mission.RequestTodoList;
 import org.l2j.gameserver.network.clientpackets.elementalspirits.*;
 import org.l2j.gameserver.network.clientpackets.ensoul.RequestItemEnsoul;
 import org.l2j.gameserver.network.clientpackets.ensoul.RequestTryEnSoulExtraction;
@@ -31,19 +30,29 @@ import org.l2j.gameserver.network.clientpackets.friend.RequestFriendDetailInfo;
 import org.l2j.gameserver.network.clientpackets.luckygame.RequestLuckyGamePlay;
 import org.l2j.gameserver.network.clientpackets.luckygame.RequestLuckyGameStartInfo;
 import org.l2j.gameserver.network.clientpackets.mentoring.*;
+import org.l2j.gameserver.network.clientpackets.mission.RequestOneDayRewardReceive;
+import org.l2j.gameserver.network.clientpackets.mission.RequestTodoList;
+import org.l2j.gameserver.network.clientpackets.olympiad.*;
 import org.l2j.gameserver.network.clientpackets.pledgebonus.RequestPledgeBonusOpen;
 import org.l2j.gameserver.network.clientpackets.pledgebonus.RequestPledgeBonusReward;
 import org.l2j.gameserver.network.clientpackets.pledgebonus.RequestPledgeBonusRewardList;
 import org.l2j.gameserver.network.clientpackets.primeshop.*;
+import org.l2j.gameserver.network.clientpackets.pvpbook.ExRequestKillerLocation;
+import org.l2j.gameserver.network.clientpackets.pvpbook.ExRequestPvpBookList;
+import org.l2j.gameserver.network.clientpackets.pvpbook.ExTeleportToKiller;
 import org.l2j.gameserver.network.clientpackets.raidbossinfo.RequestRaidBossSpawnInfo;
 import org.l2j.gameserver.network.clientpackets.raidbossinfo.RequestRaidServerInfo;
 import org.l2j.gameserver.network.clientpackets.rank.ExRankCharInfo;
 import org.l2j.gameserver.network.clientpackets.rank.ExRankingCharRankers;
+import org.l2j.gameserver.network.clientpackets.rank.ExRequestRankingCharHistory;
+import org.l2j.gameserver.network.clientpackets.sessionzones.ExTimedHuntingZoneEnter;
+import org.l2j.gameserver.network.clientpackets.sessionzones.ExTimedHuntingZoneList;
 import org.l2j.gameserver.network.clientpackets.shuttle.CannotMoveAnymoreInShuttle;
 import org.l2j.gameserver.network.clientpackets.shuttle.MoveToLocationInShuttle;
 import org.l2j.gameserver.network.clientpackets.shuttle.RequestShuttleGetOff;
 import org.l2j.gameserver.network.clientpackets.shuttle.RequestShuttleGetOn;
-import org.l2j.gameserver.network.clientpackets.timedhunter.ExTimedHuntingZoneList;
+import org.l2j.gameserver.network.clientpackets.stats.ExResetStatusBonus;
+import org.l2j.gameserver.network.clientpackets.stats.ExSetStatusBonus;
 import org.l2j.gameserver.network.clientpackets.training.NotifyTrainingRoomEnd;
 import org.l2j.gameserver.network.clientpackets.vip.ExRequestVipInfo;
 import org.l2j.gameserver.network.clientpackets.vip.RequestVipLuckGameInfo;
@@ -56,6 +65,7 @@ import java.util.function.Supplier;
 
 /**
  * @author Sdw
+ * @author JoeAlisson
  */
 public enum ExIncomingPackets implements PacketFactory {
     REQUEST_GOTO_LOBBY(0x33, RequestGotoLobby::new, ConnectionState.AUTHENTICATED),
@@ -94,7 +104,7 @@ public enum ExIncomingPackets implements PacketFactory {
     REQUEST_EX_SET_TUTORIAL(0x1D, null, ConnectionState.IN_GAME),
     REQUEST_EX_RQ_ITEM_LINK(0x1E, RequestExRqItemLink::new, ConnectionState.IN_GAME),
     CANNOT_MOVE_ANYMORE_AIR_SHIP(0x1F, null, ConnectionState.IN_GAME),
-    MOVE_TO_LOCATION_IN_AIR_SHIP(0x20, MoveToLocationInAirShip::new, ConnectionState.IN_GAME),
+    MOVE_TO_LOCATION_IN_AIR_SHIP(0x20, null, ConnectionState.IN_GAME),
     REQUEST_KEY_MAPPING(0x21, RequestKeyMapping::new, ConnectionState.JOINING_GAME),
     REQUEST_SAVE_KEY_MAPPING(0x22, RequestSaveKeyMapping::new, ConnectionState.IN_GAME),
     REQUEST_EX_REMOVE_ITEM_ATTRIBUTE(0x23, RequestExRemoveItemAttribute::new, ConnectionState.IN_GAME),
@@ -113,7 +123,7 @@ public enum ExIncomingPackets implements PacketFactory {
     ANSWER_JOIN_PARTY_ROOM(0x30, AnswerJoinPartyRoom::new, ConnectionState.IN_GAME),
     REQUEST_LIST_PARTY_MATCHING_WAITING_ROOM(0x31, RequestListPartyMatchingWaitingRoom::new, ConnectionState.IN_GAME),
     REQUEST_EX_ENCHANT_ITEM_ATTRIBUTE(0x32, RequestExEnchantItemAttribute::new, ConnectionState.IN_GAME),
-    MOVE_TO_LOCATION_AIR_SHIP(0x35, MoveToLocationAirShip::new, ConnectionState.IN_GAME),
+    MOVE_TO_LOCATION_AIR_SHIP(0x35, null, ConnectionState.IN_GAME),
     REQUEST_BID_ITEM_AUCTION(0x36, RequestBidItemAuction::new, ConnectionState.IN_GAME),
     REQUEST_INFO_ITEM_AUCTION(0x37, RequestInfoItemAuction::new, ConnectionState.IN_GAME),
     REQUEST_EX_CHANGE_NAME(0x38, RequestExChangeName::new, ConnectionState.IN_GAME),
@@ -395,7 +405,7 @@ public enum ExIncomingPackets implements PacketFactory {
     EX_ELEMENTAL_SPIRIT_SET_TALENT(0x154, ExElementalSpiritSetTalent::new, ConnectionState.IN_GAME),
     EX_ELEMENTAL_SPIRIT_INIT_TALENT(0x155, ExElementalInitTalent::new, ConnectionState.IN_GAME),
     EX_ELEMENTAL_SPIRIT_ABSORB_INFO(0x156, ExElementalSpiritAbsorbInfo::new, ConnectionState.IN_GAME),
-    EX_ELEMENTAL_SPIRIT_ABSORB(0x159, ExElementalSpiritAbsorb::new, ConnectionState.IN_GAME),
+    EX_ELEMENTAL_SPIRIT_ABSORB(0x157, ExElementalSpiritAbsorb::new, ConnectionState.IN_GAME),
     EX_REQUEST_LOCKED_ITEM(0x158, null, ConnectionState.IN_GAME),
     EX_REQUEST_UNLOCKED_ITEM(0x159, null, ConnectionState.IN_GAME),
     EX_LOCKED_ITEM_CANCEL(0x15A, null, ConnectionState.IN_GAME),
@@ -406,21 +416,37 @@ public enum ExIncomingPackets implements PacketFactory {
     EX_INTERACT_MODIFY(0x15F, null, ConnectionState.IN_GAME), // 152
     EX_TRY_ENCHANT_ARTIFACT(0x160, null, ConnectionState.IN_GAME), // 152
     EX_XIGN_CODE(0x161, null, ConnectionState.IN_GAME), // 152
+    EX_PURCHASE_LIMIT_SHOP_ITEM_BUY(0x206, RequestPurchaseLimitShopItemBuy::new, ConnectionState.IN_GAME), //UNetworkHandler::RequestExPurchaseLimitShopItemBuy
     EX_OPEN_HTML(0x164, ExOpenHtml::new, ConnectionState.IN_GAME),
-    EX_REQUEST_CLASS_CHANGE(0x165, null, ConnectionState.IN_GAME), // 228
+    EX_REQUEST_CLASS_CHANGE(0x165, ExRequestClassChange::new, ConnectionState.IN_GAME), // 228
     EX_REQUEST_CLASS_CHANGE_VERIFYING(0x166, null, ConnectionState.IN_GAME),
     EX_REQUEST_TELEPORT(0x167, ExRequestTeleport::new, ConnectionState.IN_GAME),
-    EX_COSTUME_COLLECTION_SKILL_ACTIVE(0x16B, null, ConnectionState.IN_GAME),
+    EX_COSTUME_USE_ITEM(0x168, ExRequestCostumeUseItem::new, ConnectionState.IN_GAME),
+    EX_COSTUME_LIST(0x169, ExRequestCostumeList::new, ConnectionState.IN_GAME),
+    EX_COSTUME_COLLECTION_SKILL_ACTIVE(0x16A, ExRequestCostumeCollectSkillActive::new, ConnectionState.IN_GAME),
+    EX_COSTUME_EVOLUTION(0x16B, ExRequestCostumeEvolution::new, ConnectionState.IN_GAME),
+    EX_COSTUME_EXTRACT(0x16C, ExRequestCostumeExtract::new, ConnectionState.IN_GAME),
+    EX_COSTUME_LOCK(0x16D, ExRequestCostumeLock::new, ConnectionState.IN_GAME),
+    EX_COSTUME_CHANGE_SHORTCUT(0x16E, null, ConnectionState.IN_GAME),
     EX_ACTIVATE_AUTO_SHORTCUT(0x171, ExRequestActivateAutoShortcut::new, ConnectionState.IN_GAME),
+    EX_PAYBACK_LIST(0x175, null, ConnectionState.IN_GAME),
+    EX_PAYBACK_GIVE_REWARD(0x176, null, ConnectionState.IN_GAME),
     EX_AUTOPLAY_SETTING(0x177, ExAutoPlaySetting::new, ConnectionState.IN_GAME),
     EX_TIME_RESTRICT_FIELD_LIST(0x17F, ExTimedHuntingZoneList::new, ConnectionState.IN_GAME),
-    EX_TIME_RESTRICT_FIELD_USER_ENTER(0x180, null, ConnectionState.IN_GAME),
+    EX_TIME_RESTRICT_FIELD_USER_ENTER(0x180, ExTimedHuntingZoneEnter::new, ConnectionState.IN_GAME),
     EX_RANKING_CHAR_INFO(0x181, ExRankCharInfo::new, ConnectionState.IN_GAME),
-    EX_RANKING_CHAR_HISTORY(0x182, null, ConnectionState.IN_GAME),
+    EX_RANKING_CHAR_HISTORY(0x182, ExRequestRankingCharHistory::new, ConnectionState.IN_GAME),
     EX_RANKING_CHAR_RANKERS(0x183, ExRankingCharRankers::new, ConnectionState.IN_GAME),
     EX_MERCENARY_CASTLEWAR_CASTLE_SIEGE_ATTACKER_LIST(0x186,null, ConnectionState.IN_GAME),
-    EX_PVP_BOOK_LIST(0x18B, ExPvpBookList::new, ConnectionState.IN_GAME),
-    EX_LETTER_COLLECTOR_TAKE_REWARD(0x18D, null, ConnectionState.IN_GAME);
+    EX_PVP_BOOK_LIST(0x18B, ExRequestPvpBookList::new, ConnectionState.IN_GAME),
+    EX_PVP_BOOK_KILLER_LOCATION(0x18C, ExRequestKillerLocation::new, ConnectionState.IN_GAME),
+    EX_PVP_BOOK_TELEPORT_TO_KILLER(0x18D, ExTeleportToKiller::new, ConnectionState.IN_GAME),
+    EX_LETTER_COLLECTOR_TAKE_REWARD(0x18E, null, ConnectionState.IN_GAME),
+    EX_SET_STATUS_BONUS(0x18F, ExSetStatusBonus::new, ConnectionState.IN_GAME),
+    EX_RESET_STATUS_BONUS(0x190, ExResetStatusBonus::new, ConnectionState.IN_GAME),
+    EX_OLYMPIAD_MY_RANKING_INFO(0x191, ExRequestOlympiadMyRank::new, ConnectionState.IN_GAME),
+    EX_OLYMPIAD_RANKING_INFO(0x192, ExRequestOlympiadRanking::new, ConnectionState.IN_GAME),
+    EX_OLYMPIAD_HERO_AND_LEGEND_INFO(0x193, ExRequestOlympiadHeroes::new, ConnectionState.IN_GAME);
 
     public static final ExIncomingPackets[] PACKET_ARRAY;
 

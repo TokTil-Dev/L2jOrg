@@ -1,6 +1,6 @@
 package org.l2j.gameserver.network.serverpackets.elementalspirits;
 
-import org.l2j.gameserver.engine.elemental.api.ElementalSpirit;
+import org.l2j.gameserver.api.elemental.ElementalSpirit;
 import org.l2j.gameserver.network.GameClient;
 import org.l2j.gameserver.network.ServerPacketId;
 
@@ -41,7 +41,7 @@ public class ElementalSpiritInfo extends AbstractElementalSpiritPacket {
             writeSpiritInfo(spirit);
         }
 
-        writeInt(1); // Reset talent items count
+        writeInt(1); // Reset talent item count
         for (int j = 0; j < 1; j++) {
             writeInt(57);
             writeLong(50000);

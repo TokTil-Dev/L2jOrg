@@ -3,10 +3,13 @@ package org.l2j.gameserver.model.events;
 import org.l2j.commons.util.Rnd;
 import org.l2j.gameserver.Config;
 import org.l2j.gameserver.data.xml.DoorDataManager;
+import org.l2j.gameserver.enums.InventorySlot;
+import org.l2j.gameserver.model.interfaces.ILocational;
+import org.l2j.gameserver.model.stats.Stat;
 import org.l2j.gameserver.world.WorldTimeController;
 import org.l2j.gameserver.ai.CtrlIntention;
 import org.l2j.gameserver.data.xml.impl.NpcData;
-import org.l2j.gameserver.datatables.ItemTable;
+import org.l2j.gameserver.engine.item.ItemEngine;
 import org.l2j.gameserver.enums.AttributeType;
 import org.l2j.gameserver.enums.Movie;
 import org.l2j.gameserver.enums.QuestSound;
@@ -49,17 +52,16 @@ import org.l2j.gameserver.model.holders.SkillHolder;
 import org.l2j.gameserver.model.instancezone.Instance;
 import org.l2j.gameserver.model.instancezone.InstanceTemplate;
 import org.l2j.gameserver.model.interfaces.IPositionable;
-import org.l2j.gameserver.model.itemcontainer.PcInventory;
+import org.l2j.gameserver.model.itemcontainer.PlayerInventory;
 import org.l2j.gameserver.model.items.CommonItem;
 import org.l2j.gameserver.model.items.EtcItem;
 import org.l2j.gameserver.model.items.ItemTemplate;
 import org.l2j.gameserver.model.items.enchant.attribute.AttributeHolder;
 import org.l2j.gameserver.model.items.instance.Item;
 import org.l2j.gameserver.model.olympiad.Olympiad;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.model.spawns.SpawnGroup;
 import org.l2j.gameserver.model.spawns.SpawnTemplate;
-import org.l2j.gameserver.model.stats.Stats;
 import org.l2j.gameserver.world.zone.Zone;
 import org.l2j.gameserver.network.NpcStringId;
 import org.l2j.gameserver.network.SystemMessageId;
@@ -485,7 +487,7 @@ public abstract class AbstractScript extends ManagedScript implements IEventTime
         if ((itemIds == null) || (itemIds.length == 0)) {
             return false;
         }
-        final PcInventory inv = player.getInventory();
+        final PlayerInventory inv = player.getInventory();
         for (int itemId : itemIds) {
             if (inv.getItemByItemId(itemId) == null) {
                 return false;
@@ -537,7 +539,7 @@ public abstract class AbstractScript extends ManagedScript implements IEventTime
             return;
         }
 
-        final ItemTemplate item = ItemTable.getInstance().getTemplate(itemId);
+        final ItemTemplate item = ItemEngine.getInstance().getTemplate(itemId);
         if (item == null) {
             return;
         }
@@ -552,8 +554,8 @@ public abstract class AbstractScript extends ManagedScript implements IEventTime
                             count *= Config.RATE_QUEST_REWARD_POTION;
                             break;
                         }
-                        case ENCHT_WP:
-                        case ENCHT_AM:
+                        case ENCHANT_WEAPON:
+                        case ENCHANT_ARMOR:
                         case SCROLL: {
                             count *= Config.RATE_QUEST_REWARD_SCROLL;
                             break;
@@ -716,7 +718,7 @@ public abstract class AbstractScript extends ManagedScript implements IEventTime
             item.setAttribute(new AttributeHolder(attributeType, attributeValue), true);
             if (item.isEquipped()) {
                 // Recalculate all stats
-                player.getStat().recalculateStats(true);
+                player.getStats().recalculateStats(true);
             }
 
             final InventoryUpdate iu = new InventoryUpdate();
@@ -860,7 +862,7 @@ public abstract class AbstractScript extends ManagedScript implements IEventTime
 
         // Destroy the quantity of items wanted
         if (item.isEquipped()) {
-            final Item[] unequiped = player.getInventory().unEquipItemInBodySlotAndRecord(item.getItem().getBodyPart());
+            var unequiped = player.getInventory().unEquipItemInBodySlotAndRecord(item.getBodyPart());
             final InventoryUpdate iu = new InventoryUpdate();
             for (Item itm : unequiped) {
                 iu.addModifiedItem(itm);
@@ -981,7 +983,7 @@ public abstract class AbstractScript extends ManagedScript implements IEventTime
         if (player.isSimulatingTalking()) {
             return;
         }
-        player.addExpAndSp((long) player.getStat().getValue(Stats.EXPSP_RATE, (exp * Config.RATE_QUEST_REWARD_XP)), (int) player.getStat().getValue(Stats.EXPSP_RATE, (sp * Config.RATE_QUEST_REWARD_SP)));
+        player.addExpAndSp((long) player.getStats().getValue(Stat.EXPSP_RATE, (exp * Config.RATE_QUEST_REWARD_XP)), (int) player.getStats().getValue(Stat.EXPSP_RATE, (sp * Config.RATE_QUEST_REWARD_SP)));
         PcCafePointsManager.getInstance().givePcCafePoint(player, (long) (exp * Config.RATE_QUEST_REWARD_XP));
     }
 
@@ -1022,22 +1024,43 @@ public abstract class AbstractScript extends ManagedScript implements IEventTime
 
     /**
      * Get a random entry.<br>
-     *
-     * @param entry array with values.
-     * @return random one value from array entry.
+     * @param <T>
+     * @param array of values.
+     * @return one value from array.
      */
-    public static String getRandomEntry(String... entry) {
-        return entry[getRandom(entry.length)];
+    @SuppressWarnings("unchecked")
+    public static <T> T getRandomEntry(T... array)
+    {
+        if (array.length == 0)
+        {
+            return null;
+        }
+        return array[getRandom(array.length)];
     }
 
     /**
      * Get a random entry.<br>
-     *
-     * @param entry array with values.
-     * @return random one value from array entry.
+     * @param <T>
+     * @param list of values.
+     * @return one value from list.
      */
-    public static int getRandomEntry(int... entry) {
-        return entry[getRandom(entry.length)];
+    public static <T> T getRandomEntry(List<T> list)
+    {
+        if (list.isEmpty())
+        {
+            return null;
+        }
+        return list.get(getRandom(list.size()));
+    }
+
+    /**
+     * Get a random entry.<br>
+     * @param array of Integers.
+     * @return one Integer from array.
+     */
+    public static int getRandomEntry(int... array)
+    {
+        return array[getRandom(array.length)];
     }
 
     // ---------------------------------------------------------------------------------------------------------------------------
@@ -1049,7 +1072,7 @@ public abstract class AbstractScript extends ManagedScript implements IEventTime
      * @param slot   the location in the player's inventory to check
      * @return the ID of the item equipped in the specified inventory slot or 0 if the slot is empty or item is {@code null}.
      */
-    public static int getItemEquipped(Player player, int slot) {
+    public static int getItemEquipped(Player player, InventorySlot slot) {
         return player.getInventory().getPaperdollItemId(slot);
     }
 
@@ -1137,12 +1160,10 @@ public abstract class AbstractScript extends ManagedScript implements IEventTime
         world.broadcastPacket(new SpecialCamera(creature, force, angle1, angle2, time, range, duration, relYaw, relPitch, isWide, relAngle, unk));
     }
 
-    /**
-     * @param player
-     * @param x
-     * @param y
-     * @param z
-     */
+    public static void addRadar(Player player, ILocational loc) {
+        addRadar(player, loc.getX(), loc.getY(), loc.getZ());
+    }
+
     public static void addRadar(Player player, int x, int y, int z) {
         if (player.isSimulatingTalking()) {
             return;
@@ -2521,25 +2542,25 @@ public abstract class AbstractScript extends ManagedScript implements IEventTime
             }
             case GLOBAL: // Global Listener
             {
-                final ListenersContainer template = Containers.Global();
+                final ListenersContainer template = Listeners.Global();
                 listeners.add(template.addListener(action.apply(template)));
                 break;
             }
             case GLOBAL_NPCS: // Global Npcs Listener
             {
-                final ListenersContainer template = Containers.Npcs();
+                final ListenersContainer template = Listeners.Npcs();
                 listeners.add(template.addListener(action.apply(template)));
                 break;
             }
             case GLOBAL_MONSTERS: // Global Monsters Listener
             {
-                final ListenersContainer template = Containers.Monsters();
+                final ListenersContainer template = Listeners.Monsters();
                 listeners.add(template.addListener(action.apply(template)));
                 break;
             }
             case GLOBAL_PLAYERS: // Global Players Listener
             {
-                final ListenersContainer template = Containers.Players();
+                final ListenersContainer template = Listeners.players();
                 listeners.add(template.addListener(action.apply(template)));
                 break;
             }
@@ -2586,7 +2607,7 @@ public abstract class AbstractScript extends ManagedScript implements IEventTime
                 break;
             }
             case ITEM: {
-                final ItemTemplate template = ItemTable.getInstance().getTemplate(id);
+                final ItemTemplate template = ItemEngine.getInstance().getTemplate(id);
                 if (template != null) {
                     listeners.add(template.addListener(action.apply(template)));
                 }
@@ -2733,7 +2754,7 @@ public abstract class AbstractScript extends ManagedScript implements IEventTime
      * @return {@code true} if at least one items exist in player's inventory, {@code false} otherwise
      */
     public boolean hasAtLeastOneQuestItem(Player player, int... itemIds) {
-        final PcInventory inv = player.getInventory();
+        final PlayerInventory inv = player.getInventory();
         for (int itemId : itemIds) {
             if (inv.getItemByItemId(itemId) != null) {
                 return true;

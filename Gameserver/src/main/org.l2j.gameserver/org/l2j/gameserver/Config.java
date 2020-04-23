@@ -2,11 +2,9 @@ package org.l2j.gameserver;
 
 import org.l2j.commons.util.PropertiesParser;
 import org.l2j.commons.util.StringUtil;
-import org.l2j.commons.util.Util;
-import org.l2j.gameserver.enums.ChatType;
-import org.l2j.gameserver.enums.IllegalActionPunishmentType;
 import org.l2j.gameserver.model.Location;
 import org.l2j.gameserver.model.holders.ItemHolder;
+import org.l2j.gameserver.settings.RateSettings;
 import org.l2j.gameserver.util.FloodProtectorConfig;
 import org.l2j.gameserver.util.GameXmlReader;
 import org.slf4j.Logger;
@@ -24,13 +22,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Duration;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.l2j.commons.configuration.Configurator.getSettings;
 import static org.l2j.commons.util.Util.isNullOrEmpty;
 
 /**
@@ -39,11 +37,9 @@ import static org.l2j.commons.util.Util.isNullOrEmpty;
  * Each configuration has a default value (that should reflect retail behavior).
  */
 public final class Config {
-    // --------------------------------------------------
-    // Constants
-    private static final Logger LOGGER = LoggerFactory.getLogger(Config.class.getName());
-    // --------------------------------------------------
-    public static final String EOL = System.lineSeparator();
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Config.class);
+
     // --------------------------------------------------
     // Config File Definitions
     // --------------------------------------------------
@@ -51,9 +47,8 @@ public final class Config {
     public static final String OLYMPIAD_CONFIG_FILE = "./config/Olympiad.ini";
     public static final String SIEGE_CONFIG_FILE = "./config/Siege.ini";
     public static final String FORTSIEGE_CONFIG_FILE = "./config/FortSiege.ini";
-    private static final String ATTENDANCE_CONFIG_FILE = "./config/AttendanceRewards.ini";
     private static final String CHARACTER_CONFIG_FILE = "config/character.properties";
-    private static final String FEATURE_CONFIG_FILE = "./config/Feature.ini";
+    private static final String FEATURE_CONFIG_FILE = "config/feature.properties";
     private static final String FLOOD_PROTECTOR_CONFIG_FILE = "./config/FloodProtector.ini";
     private static final String GENERAL_CONFIG_FILE = "config/general.properties";
     private static final String GRACIASEEDS_CONFIG_FILE = "./config/GraciaSeeds.ini";
@@ -62,21 +57,15 @@ public final class Config {
 
     private static final String NPC_CONFIG_FILE = "./config/NPC.ini";
     private static final String PVP_CONFIG_FILE = "./config/PVP.ini";
-    private static final String RATES_CONFIG_FILE = "./config/Rates.ini";
+    private static final String RATES_CONFIG_FILE = "config/rates.properties";
     private static final String SERVER_CONFIG_FILE = "config/server.properties";
     private static final String TRAINING_CAMP_CONFIG_FILE = "./config/TrainingCamp.ini";
     private static final String CHAT_FILTER_FILE = "./config/chatfilter.txt";
     private static final String IPCONFIG_FILE = "./config/ipconfig.xml";
 
-    public static final int MAX_ACTIVE_ACCOUNTS_ON_ONE_IP = 0;
-    public static final String[] MAX_ACTIVE_ACCOUNTS_IGNORED_IP = { "127.0.0.1"};
-    public static final int MAX_ACTIVE_ACCOUNTS_ON_ONE_HWID = 0;
-
-
     // --------------------------------------------------
     // Custom Config File Definitions
     // --------------------------------------------------
-    private static final String CUSTOM_AUTO_POTIONS_CONFIG_FILE = "./config/Custom/AutoPotions.ini";
     private static final String CUSTOM_BANKING_CONFIG_FILE = "./config/Custom/Banking.ini";
     private static final String CUSTOM_CHAMPION_MONSTERS_CONFIG_FILE = "./config/Custom/ChampionMonsters.ini";
     private static final String CUSTOM_COMMUNITY_BOARD_CONFIG_FILE = "./config/Custom/CommunityBoard.ini";
@@ -96,21 +85,11 @@ public final class Config {
     private static final String CUSTOM_SCHEME_BUFFER_CONFIG_FILE = "./config/Custom/ShemeBuffer.ini";
     private static final String CUSTOM_STARTING_LOCATION_CONFIG_FILE = "./config/Custom/StartingLocation.ini";
     private static final String CUSTOM_VOTE_REWARD_CONFIG_FILE = "./config/Custom/VoteReward.ini";
-    private static final String CUSTOM_WALKER_BOT_PROTECTION_CONFIG_FILE = "./config/Custom/WalkerBotProtection.ini";
+    private static final String TIME_LIMITED_ZONE_CONFIG_FILE = "./config/TimeLimitedZones.ini";
 
     // --------------------------------------------------
     // Variable Definitions
     // --------------------------------------------------
-    public static boolean ENABLE_ATTENDANCE_REWARDS;
-    public static boolean VIP_ONLY_ATTENDANCE_REWARDS;
-    public static boolean ATTENDANCE_REWARDS_SHARE_ACCOUNT;
-    public static int ATTENDANCE_REWARD_DELAY;
-    public static boolean ATTENDANCE_POPUP_WINDOW;
-    public static boolean PLAYER_DELEVEL;
-    public static int DELEVEL_MINIMUM;
-    public static boolean DECREASE_SKILL_LEVEL;
-    public static double ALT_WEIGHT_LIMIT;
-    public static int RUN_SPD_BOOST;
     public static double RESPAWN_RESTORE_CP;
     public static double RESPAWN_RESTORE_HP;
     public static double RESPAWN_RESTORE_MP;
@@ -143,7 +122,6 @@ public final class Config {
     public static boolean ALT_GAME_SUBCLASS_EVERYWHERE;
     public static boolean ALLOW_TRANSFORM_WITHOUT_QUEST;
 
-    public static boolean RESTORE_SERVITOR_ON_RECONNECT;
     public static boolean RESTORE_PET_ON_RECONNECT;
     public static double MAX_BONUS_EXP;
     public static double MAX_BONUS_SP;
@@ -215,17 +193,15 @@ public final class Config {
     public static int ALT_PARTY_RANGE;
 
     public static boolean ALT_LEAVE_PARTY_LEADER;
-    public static boolean INITIAL_EQUIPMENT_EVENT;
+
     public static long STARTING_ADENA;
     public static byte STARTING_LEVEL;
     public static int STARTING_SP;
     public static long MAX_ADENA;
-    public static boolean AUTO_LOOT;
-    public static boolean AUTO_LOOT_RAIDS;
+
     public static boolean AUTO_LOOT_SLOT_LIMIT;
-    public static int LOOT_RAIDS_PRIVILEGE_INTERVAL;
     public static int LOOT_RAIDS_PRIVILEGE_CC_SIZE;
-    public static List<Integer> AUTO_LOOT_ITEM_IDS;
+
     public static boolean ENABLE_KEYBOARD_MOVEMENT;
     public static int UNSTUCK_INTERVAL;
     public static int TELEPORT_WATCHDOG_TIMEOUT;
@@ -246,11 +222,8 @@ public final class Config {
     public static int[][] PARTY_XP_CUTOFF_GAPS;
     public static int[] PARTY_XP_CUTOFF_GAP_PERCENTS;
     public static boolean DISABLE_TUTORIAL;
-    public static boolean EXPERTISE_PENALTY;
     public static boolean STORE_RECIPE_SHOPLIST;
     public static boolean STORE_UI_SETTINGS;
-
-    public static boolean SILENCE_MODE_EXCLUDE;
 
     // --------------------------------------------------
     // Castle Settings
@@ -270,7 +243,6 @@ public final class Config {
     public static long CS_SUPPORT_FEE_RATIO;
     public static int CS_SUPPORT1_FEE;
     public static int CS_SUPPORT2_FEE;
-    public static List<Integer> SIEGE_HOUR_LIST;
     public static int CASTLE_BUY_TAX_NEUTRAL;
     public static int CASTLE_BUY_TAX_LIGHT;
     public static int CASTLE_BUY_TAX_DARK;
@@ -337,7 +309,7 @@ public final class Config {
     // --------------------------------------------------
     // General Settings
     // --------------------------------------------------
-    public static int DEFAULT_ACCESS_LEVEL;
+
     public static boolean SERVER_GMONLY;
     public static boolean GM_HERO_AURA;
     public static boolean GM_STARTUP_BUILDER_HIDE;
@@ -355,9 +327,7 @@ public final class Config {
     public static boolean GM_GIVE_SPECIAL_AURA_SKILLS;
     public static boolean GM_DEBUG_HTML_PATHS;
     public static boolean USE_SUPER_HASTE_AS_GM_SPEED;
-    public static boolean LOG_CHAT;
-    public static boolean LOG_ITEMS;
-    public static boolean LOG_ITEMS_SMALL_LOG;
+
     public static boolean LOG_ITEM_ENCHANTS;
     public static boolean LOG_SKILL_ENCHANTS;
 
@@ -371,12 +341,8 @@ public final class Config {
     public static boolean ALT_DEV_SHOW_QUESTS_LOAD_IN_LOGS;
     public static boolean ALT_DEV_SHOW_SCRIPTS_LOAD_IN_LOGS;
 
-    public static boolean DEADLOCK_DETECTOR;
-    public static int DEADLOCK_CHECK_INTERVAL;
-    public static boolean RESTART_ON_DEADLOCK;
     public static boolean ALLOW_DISCARDITEM;
-    public static int AUTODESTROY_ITEM_AFTER;
-    public static int HERB_AUTO_DESTROY_TIME;
+
     public static List<Integer> LIST_PROTECTED_ITEMS;
     public static int CHAR_DATA_STORE_INTERVAL;
     public static int CLAN_VARIABLES_STORE_INTERVAL;
@@ -385,7 +351,7 @@ public final class Config {
     public static boolean DESTROY_DROPPED_PLAYER_ITEM;
     public static boolean DESTROY_EQUIPABLE_PLAYER_ITEM;
     public static boolean DESTROY_ALL_ITEMS;
-    public static boolean SAVE_DROPPED_ITEM;
+
     public static boolean EMPTY_DROPPED_ITEM_TABLE_AFTER_LOAD;
     public static int SAVE_DROPPED_ITEM_INTERVAL;
     public static boolean CLEAR_DROPPED_ITEM_TABLE;
@@ -395,7 +361,6 @@ public final class Config {
     public static boolean MULTIPLE_ITEM_DROP;
     public static boolean FORCE_INVENTORY_UPDATE;
 
-    public static boolean CACHE_CHAR_NAMES;
     public static int MIN_NPC_ANIMATION;
     public static int MAX_NPC_ANIMATION;
     public static int MIN_MONSTER_ANIMATION;
@@ -405,15 +370,11 @@ public final class Config {
     public static int GRID_NEIGHBOR_TURNON_TIME;
     public static int GRID_NEIGHBOR_TURNOFF_TIME;
     public static int PEACE_ZONE_MODE;
-    public static String DEFAULT_GLOBAL_CHAT;
-    public static String DEFAULT_TRADE_CHAT;
-    public static boolean ENABLE_WORLD_CHAT;
 
     public static boolean ALLOW_WAREHOUSE;
     public static boolean WAREHOUSE_CACHE;
     public static int WAREHOUSE_CACHE_TIME;
     public static boolean ALLOW_REFUND;
-    public static boolean ALLOW_MAIL;
     public static boolean ALLOW_ATTACHMENTS;
     public static boolean ALLOW_WEAR;
     public static int WEAR_DELAY;
@@ -430,12 +391,8 @@ public final class Config {
     public static boolean SERVER_NEWS;
     public static boolean ENABLE_COMMUNITY_BOARD;
     public static String BBS_DEFAULT;
-    public static boolean USE_SAY_FILTER;
-    public static String CHAT_FILTER_CHARS;
-    public static Set<ChatType> BAN_CHAT_CHANNELS;
-    public static int WORLD_CHAT_MIN_LEVEL;
+
     public static int WORLD_CHAT_POINTS_PER_DAY;
-    public static Duration WORLD_CHAT_INTERVAL;
     public static int ALT_OLY_START_TIME;
     public static int ALT_OLY_MIN;
     public static long ALT_OLY_CPERIOD;
@@ -478,22 +435,19 @@ public final class Config {
     public static int ALT_MANOR_APPROVE_TIME;
     public static int ALT_MANOR_APPROVE_MIN;
     public static int ALT_MANOR_MAINTENANCE_MIN;
-    public static boolean ALT_MANOR_SAVE_ALL_ACTIONS;
     public static int ALT_MANOR_SAVE_PERIOD_RATE;
     public static boolean ALT_ITEM_AUCTION_ENABLED;
     public static int ALT_ITEM_AUCTION_EXPIRED_AFTER;
     public static long ALT_ITEM_AUCTION_TIME_EXTENDS_ON_BID;
-    public static IllegalActionPunishmentType DEFAULT_PUNISH;
+
     public static int DEFAULT_PUNISH_PARAM;
     public static boolean ONLY_GM_ITEMS_FREE;
     public static boolean JAIL_IS_PVP;
-    public static boolean JAIL_DISABLE_CHAT;
     public static boolean JAIL_DISABLE_TRANSACTION;
     public static boolean CUSTOM_NPC_DATA;
 
     public static boolean CUSTOM_ITEMS_LOAD;
-    public static boolean CUSTOM_MULTISELL_LOAD;
-    public static boolean CUSTOM_BUYLIST_LOAD;
+
     public static int ALT_BIRTHDAY_GIFT;
     public static String ALT_BIRTHDAY_MAIL_SUBJECT;
     public static String ALT_BIRTHDAY_MAIL_TEXT;
@@ -583,7 +537,6 @@ public final class Config {
     // --------------------------------------------------
     // Rate Settings
     // --------------------------------------------------
-    public static float RATE_XP;
     public static float RATE_SP;
     public static float RATE_PARTY_XP;
     public static float RATE_PARTY_SP;
@@ -642,9 +595,7 @@ public final class Config {
     // --------------------------------------------------
     // Server Settings
     // --------------------------------------------------
-    public static int PORT_GAME;
 
-    public static int MAXIMUM_ONLINE_USERS;
     public static boolean HARDWARE_INFO_ENABLED;
     public static int MAX_PLAYERS_PER_HWID;
     public static Pattern CHARNAME_TEMPLATE_PATTERN;
@@ -652,10 +603,9 @@ public final class Config {
     public static String CLAN_NAME_TEMPLATE;
     public static int MAX_CHARACTERS_NUMBER_PER_ACCOUNT;
     public static File DATAPACK_ROOT;
-    public static List<Integer> PROTOCOL_LIST;
     public static int SERVER_LIST_AGE;
     public static boolean SERVER_LIST_BRACKET;
-    public static boolean SERVER_RESTART_SCHEDULE_ENABLED;
+
     public static boolean SERVER_RESTART_SCHEDULE_MESSAGE;
     public static int SERVER_RESTART_SCHEDULE_COUNTDOWN;
     public static String[] SERVER_RESTART_SCHEDULE;
@@ -690,9 +640,6 @@ public final class Config {
     public static boolean DISABLE_OVER_ENCHANTING;
     public static int[] AUGMENTATION_BLACKLIST;
     public static boolean ALT_ALLOW_AUGMENT_PVP_ITEMS;
-    public static double HP_REGEN_MULTIPLIER;
-    public static double MP_REGEN_MULTIPLIER;
-    public static double CP_REGEN_MULTIPLIER;
     public static boolean TRAINING_CAMP_ENABLE;
 
     public static int TRAINING_CAMP_MAX_DURATION;
@@ -836,25 +783,13 @@ public final class Config {
     public static List<String> MULTILANG_ALLOWED = new ArrayList<>();
     public static String MULTILANG_DEFAULT;
     public static boolean MULTILANG_VOICED_ALLOW;
-    public static boolean L2WALKER_PROTECTION;
+
     public static int DUALBOX_CHECK_MAX_PLAYERS_PER_IP;
     public static int DUALBOX_CHECK_MAX_OLYMPIAD_PARTICIPANTS_PER_IP;
     public static int DUALBOX_CHECK_MAX_L2EVENT_PARTICIPANTS_PER_IP;
     public static boolean DUALBOX_COUNT_OFFLINE_TRADERS;
     public static Map<Integer, Integer> DUALBOX_CHECK_WHITELIST;
 
-    public static boolean AUTO_POTIONS_ENABLED;
-    public static boolean AUTO_POTIONS_IN_OLYMPIAD;
-    public static int AUTO_POTION_MIN_LVL;
-    public static boolean AUTO_CP_ENABLED;
-    public static boolean AUTO_HP_ENABLED;
-    public static boolean AUTO_MP_ENABLED;
-    public static int AUTO_CP_PERCENTAGE;
-    public static int AUTO_HP_PERCENTAGE;
-    public static int AUTO_MP_PERCENTAGE;
-    public static List<Integer> AUTO_CP_ITEM_IDS;
-    public static List<Integer> AUTO_HP_ITEM_IDS;
-    public static List<Integer> AUTO_MP_ITEM_IDS;
     public static boolean CUSTOM_STARTING_LOC;
     public static int CUSTOM_STARTING_LOC_X;
     public static int CUSTOM_STARTING_LOC_Y;
@@ -915,8 +850,14 @@ public final class Config {
     public static Map<Integer, Integer> HOPZONE_REWARD = new HashMap<>();
     public static int HOPZONE_DUALBOXES_ALLOWED;
     public static boolean ALLOW_HOPZONE_GAME_SERVER_REPORT;
-    ;
 
+    // --------------------------------------------------
+    // HUNTING ZONE
+    // --------------------------------------------------
+    public static long TIME_LIMITED_ZONE_INITIAL_TIME;
+    public static long TIME_LIMITED_MAX_ADDED_TIME;
+    public static long TIME_LIMITED_ZONE_RESET_DELAY;
+    public static long TIME_LIMITED_ZONE_TELEPORT_FEE;
     /**
      * This class initializes all global variables for configuration.<br>
      * If the key doesn't appear in properties file, a default value is set by this class. {@link #SERVER_CONFIG_FILE} (properties file) for configuring your server.
@@ -940,7 +881,6 @@ public final class Config {
         FLOOD_PROTECTOR_ITEM_AUCTION = new FloodProtectorConfig("ItemAuctionFloodProtector");
 
         final PropertiesParser serverSettings = new PropertiesParser(SERVER_CONFIG_FILE);
-        PORT_GAME = serverSettings.getInt("GameserverPort", 7777);
 
         try {
             DATAPACK_ROOT = new File(serverSettings.getString("DatapackRoot", ".").replaceAll("\\\\", "/")).getCanonicalFile();
@@ -964,29 +904,13 @@ public final class Config {
         CLAN_NAME_TEMPLATE = serverSettings.getString("ClanNameTemplate", ".*");
 
         MAX_CHARACTERS_NUMBER_PER_ACCOUNT = serverSettings.getInt("CharMaxNumber", 7);
-        MAXIMUM_ONLINE_USERS = serverSettings.getInt("MaximumOnlineUsers", 100);
 
         HARDWARE_INFO_ENABLED = serverSettings.getBoolean("EnableHardwareInfo", false);
         MAX_PLAYERS_PER_HWID = serverSettings.getInt("MaxPlayersPerHWID", 0);
 
-        final String[] protocols = serverSettings.getString("AllowedProtocolRevisions", "166").split(";");
-        PROTOCOL_LIST = new ArrayList<>(protocols.length);
-        for (String protocol : protocols) {
-            try {
-                PROTOCOL_LIST.add(Integer.parseInt(protocol.trim()));
-            } catch (NumberFormatException e) {
-                LOGGER.warn("Wrong config protocol version: " + protocol + ". Skipped.");
-            }
-        }
-
         SERVER_LIST_AGE = serverSettings.getInt("ServerListAge", 0);
         SERVER_LIST_BRACKET = serverSettings.getBoolean("ServerListBrackets", false);
 
-        DEADLOCK_DETECTOR = serverSettings.getBoolean("DeadLockDetector", true);
-        DEADLOCK_CHECK_INTERVAL = serverSettings.getInt("DeadLockCheckInterval", 20);
-        RESTART_ON_DEADLOCK = serverSettings.getBoolean("RestartOnDeadlock", false);
-
-        SERVER_RESTART_SCHEDULE_ENABLED = serverSettings.getBoolean("ServerRestartScheduleEnabled", false);
         SERVER_RESTART_SCHEDULE_MESSAGE = serverSettings.getBoolean("ServerRestartScheduleMessage", false);
         SERVER_RESTART_SCHEDULE_COUNTDOWN = serverSettings.getInt("ServerRestartScheduleCountdown", 600);
         SERVER_RESTART_SCHEDULE = serverSettings.getString("ServerRestartSchedule", "08:00").split(",");
@@ -996,14 +920,11 @@ public final class Config {
         GAME_SERVER_SUBNETS = ipcd.getSubnets();
         GAME_SERVER_HOSTS = ipcd.getHosts();
 
+
+
         // Load Feature config file (if exists)
         final PropertiesParser Feature = new PropertiesParser(FEATURE_CONFIG_FILE);
-        SIEGE_HOUR_LIST = new ArrayList<>();
-        for (String hour : Feature.getString("SiegeHourList", "").split(",")) {
-            if (Util.isInteger(hour)) {
-                SIEGE_HOUR_LIST.add(Integer.parseInt(hour));
-            }
-        }
+
         CASTLE_BUY_TAX_NEUTRAL = Feature.getInt("BuyTaxForNeutralSide", 15);
         CASTLE_BUY_TAX_LIGHT = Feature.getInt("BuyTaxForLightSide", 0);
         CASTLE_BUY_TAX_DARK = Feature.getInt("BuyTaxForDarkSide", 30);
@@ -1078,28 +999,12 @@ public final class Config {
         ALLOW_WYVERN_DURING_SIEGE = Feature.getBoolean("AllowRideWyvernDuringSiege", true);
         ALLOW_MOUNTS_DURING_SIEGE = Feature.getBoolean("AllowRideMountsDuringSiege", false);
 
-        // Load Attandance config file (if exists)
-        final PropertiesParser Attandance = new PropertiesParser(ATTENDANCE_CONFIG_FILE);
-        ENABLE_ATTENDANCE_REWARDS = Attandance.getBoolean("EnableAttendanceRewards", false);
-        VIP_ONLY_ATTENDANCE_REWARDS = Attandance.getBoolean("VipOnlyAttendanceRewards", false);
-        ATTENDANCE_REWARDS_SHARE_ACCOUNT = Attandance.getBoolean("AttendanceRewardsShareAccount", false);
-        ATTENDANCE_REWARD_DELAY = Attandance.getInt("AttendanceRewardDelay", 30);
-        ATTENDANCE_POPUP_WINDOW = Attandance.getBoolean("AttendancePopupWindow", false);
-
         // Load Character config file (if exists)
         final PropertiesParser Character = new PropertiesParser(CHARACTER_CONFIG_FILE);
 
-        PLAYER_DELEVEL = Character.getBoolean("Delevel", true);
-        DELEVEL_MINIMUM = Character.getInt("DelevelMinimum", 85);
-        DECREASE_SKILL_LEVEL = Character.getBoolean("DecreaseSkillOnDelevel", true);
-        ALT_WEIGHT_LIMIT = Character.getDouble("AltWeightLimit", 1);
-        RUN_SPD_BOOST = Character.getInt("RunSpeedBoost", 0);
         RESPAWN_RESTORE_CP = Character.getDouble("RespawnRestoreCP", 0) / 100;
         RESPAWN_RESTORE_HP = Character.getDouble("RespawnRestoreHP", 65) / 100;
         RESPAWN_RESTORE_MP = Character.getDouble("RespawnRestoreMP", 0) / 100;
-        HP_REGEN_MULTIPLIER = Character.getDouble("HpRegenMultiplier", 100) / 100;
-        MP_REGEN_MULTIPLIER = Character.getDouble("MpRegenMultiplier", 100) / 100;
-        CP_REGEN_MULTIPLIER = Character.getDouble("CpRegenMultiplier", 100) / 100;
         ENABLE_MODIFY_SKILL_DURATION = Character.getBoolean("EnableModifySkillDuration", false);
 
         // Create Map only if enabled
@@ -1164,7 +1069,6 @@ public final class Config {
         DIVINE_SP_BOOK_NEEDED = Character.getBoolean("DivineInspirationSpBookNeeded", true);
         ALT_GAME_SUBCLASS_WITHOUT_QUESTS = Character.getBoolean("AltSubClassWithoutQuests", false);
         ALT_GAME_SUBCLASS_EVERYWHERE = Character.getBoolean("AltSubclassEverywhere", false);
-        RESTORE_SERVITOR_ON_RECONNECT = Character.getBoolean("RestoreServitorOnReconnect", true);
         RESTORE_PET_ON_RECONNECT = Character.getBoolean("RestorePetOnReconnect", true);
         ALLOW_TRANSFORM_WITHOUT_QUEST = Character.getBoolean("AltTransformationWithoutQuest", false);
         ENABLE_VITALITY = Character.getBoolean("EnableVitality", true);
@@ -1261,7 +1165,7 @@ public final class Config {
         ALT_PARTY_RANGE = Character.getInt("AltPartyRange", 1600);
 
         ALT_LEAVE_PARTY_LEADER = Character.getBoolean("AltLeavePartyLeader", false);
-        INITIAL_EQUIPMENT_EVENT = Character.getBoolean("InitialEquipmentEvent", false);
+
         STARTING_ADENA = Character.getLong("StartingAdena", 0);
         STARTING_LEVEL = Character.getByte("StartingLevel", (byte) 1);
         STARTING_SP = Character.getInt("StartingSP", 0);
@@ -1269,25 +1173,10 @@ public final class Config {
         if (MAX_ADENA < 0) {
             MAX_ADENA = Long.MAX_VALUE;
         }
-        AUTO_LOOT = Character.getBoolean("AutoLoot", false);
-        AUTO_LOOT_RAIDS = Character.getBoolean("AutoLootRaids", false);
+
         AUTO_LOOT_SLOT_LIMIT = Character.getBoolean("AutoLootSlotLimit", false);
-        LOOT_RAIDS_PRIVILEGE_INTERVAL = Character.getInt("RaidLootRightsInterval", 900) * 1000;
         LOOT_RAIDS_PRIVILEGE_CC_SIZE = Character.getInt("RaidLootRightsCCSize", 45);
-        final String[] autoLootItemIds = Character.getString("AutoLootItemIds", "0").split(",");
-        AUTO_LOOT_ITEM_IDS = new ArrayList<>(autoLootItemIds.length);
-        for (String item : autoLootItemIds) {
-            Integer itm = 0;
-            try {
-                itm = Integer.parseInt(item);
-            } catch (NumberFormatException nfe) {
-                LOGGER.warn("Auto loot item ids: Wrong ItemId passed: " + item);
-                LOGGER.warn(nfe.getMessage());
-            }
-            if (itm != 0) {
-                AUTO_LOOT_ITEM_IDS.add(itm);
-            }
-        }
+
         ENABLE_KEYBOARD_MOVEMENT = Character.getBoolean("KeyboardMovement", true);
         UNSTUCK_INTERVAL = Character.getInt("UnstuckInterval", 300);
         TELEPORT_WATCHDOG_TIMEOUT = Character.getInt("TeleportWatchdogTimeout", 0);
@@ -1320,11 +1209,8 @@ public final class Config {
             PARTY_XP_CUTOFF_GAP_PERCENTS[i] = Integer.parseInt(percents[i]);
         }
         DISABLE_TUTORIAL = Character.getBoolean("DisableTutorial", false);
-        EXPERTISE_PENALTY = Character.getBoolean("ExpertisePenalty", true);
         STORE_RECIPE_SHOPLIST = Character.getBoolean("StoreRecipeShopList", false);
         STORE_UI_SETTINGS = Character.getBoolean("StoreCharUiSettings", true);
-
-        SILENCE_MODE_EXCLUDE = Character.getBoolean("SilenceModeExclude", false);
 
         PLAYER_MOVEMENT_BLOCK_TIME = Character.getInt("NpcTalkBlockingTime", 0) * 1000;
 
@@ -1339,7 +1225,7 @@ public final class Config {
 
         // Load General config file (if exists)
         final PropertiesParser General = new PropertiesParser(GENERAL_CONFIG_FILE);
-        DEFAULT_ACCESS_LEVEL = General.getInt("DefaultAccessLevel", 0);
+
         SERVER_GMONLY = General.getBoolean("ServerGMOnly", false);
         GM_HERO_AURA = General.getBoolean("GMHeroAura", false);
         GM_STARTUP_BUILDER_HIDE = General.getBoolean("GMStartupBuilderHide", false);
@@ -1357,10 +1243,7 @@ public final class Config {
         GM_GIVE_SPECIAL_AURA_SKILLS = General.getBoolean("GMGiveSpecialAuraSkills", false);
         GM_DEBUG_HTML_PATHS = General.getBoolean("GMDebugHtmlPaths", true);
         USE_SUPER_HASTE_AS_GM_SPEED = General.getBoolean("UseSuperHasteAsGMSpeed", false);
-        LOG_CHAT = General.getBoolean("LogChat", false);
 
-        LOG_ITEMS = General.getBoolean("LogItems", false);
-        LOG_ITEMS_SMALL_LOG = General.getBoolean("LogItemsSmallLog", false);
         LOG_ITEM_ENCHANTS = General.getBoolean("LogItemEnchants", false);
         LOG_SKILL_ENCHANTS = General.getBoolean("LogSkillEnchants", false);
 
@@ -1374,8 +1257,6 @@ public final class Config {
         ALT_DEV_SHOW_QUESTS_LOAD_IN_LOGS = General.getBoolean("AltDevShowQuestsLoadInLogs", false);
         ALT_DEV_SHOW_SCRIPTS_LOAD_IN_LOGS = General.getBoolean("AltDevShowScriptsLoadInLogs", false);
         ALLOW_DISCARDITEM = General.getBoolean("AllowDiscardItem", true);
-        AUTODESTROY_ITEM_AFTER = General.getInt("AutoDestroyDroppedItemAfter", 600);
-        HERB_AUTO_DESTROY_TIME = General.getInt("AutoDestroyHerbTime", 60) * 1000;
         final String[] split = General.getString("ListOfProtectedItems", "0").split(",");
         LIST_PROTECTED_ITEMS = new ArrayList<>(split.length);
         for (String id : split) {
@@ -1388,7 +1269,6 @@ public final class Config {
         DESTROY_DROPPED_PLAYER_ITEM = General.getBoolean("DestroyPlayerDroppedItem", false);
         DESTROY_EQUIPABLE_PLAYER_ITEM = General.getBoolean("DestroyEquipableItem", false);
         DESTROY_ALL_ITEMS = General.getBoolean("DestroyAllItems", false);
-        SAVE_DROPPED_ITEM = General.getBoolean("SaveDroppedItem", false);
         EMPTY_DROPPED_ITEM_TABLE_AFTER_LOAD = General.getBoolean("EmptyDroppedItemTableAfterLoad", false);
         SAVE_DROPPED_ITEM_INTERVAL = General.getInt("SaveDroppedItemInterval", 60) * 60000;
         CLEAR_DROPPED_ITEM_TABLE = General.getBoolean("ClearDroppedItemTable", false);
@@ -1398,7 +1278,6 @@ public final class Config {
         MULTIPLE_ITEM_DROP = General.getBoolean("MultipleItemDrop", true);
         FORCE_INVENTORY_UPDATE = General.getBoolean("ForceInventoryUpdate", false);
 
-        CACHE_CHAR_NAMES = General.getBoolean("CacheCharNames", true);
         MIN_NPC_ANIMATION = General.getInt("MinNpcAnimation", 5);
         MAX_NPC_ANIMATION = General.getInt("MaxNpcAnimation", 60);
         MIN_MONSTER_ANIMATION = General.getInt("MinMonsterAnimation", 5);
@@ -1407,15 +1286,11 @@ public final class Config {
         GRID_NEIGHBOR_TURNON_TIME = General.getInt("GridNeighborTurnOnTime", 1);
         GRID_NEIGHBOR_TURNOFF_TIME = General.getInt("GridNeighborTurnOffTime", 90);
         PEACE_ZONE_MODE = General.getInt("PeaceZoneMode", 0);
-        DEFAULT_GLOBAL_CHAT = General.getString("GlobalChat", "ON");
-        DEFAULT_TRADE_CHAT = General.getString("TradeChat", "ON");
-        ENABLE_WORLD_CHAT = General.getBoolean("WorldChatEnabled", false);
 
         ALLOW_WAREHOUSE = General.getBoolean("AllowWarehouse", true);
         WAREHOUSE_CACHE = General.getBoolean("WarehouseCache", false);
         WAREHOUSE_CACHE_TIME = General.getInt("WarehouseCacheTime", 15);
         ALLOW_REFUND = General.getBoolean("AllowRefund", true);
-        ALLOW_MAIL = General.getBoolean("AllowMail", true);
         ALLOW_ATTACHMENTS = General.getBoolean("AllowAttachments", true);
         ALLOW_WEAR = General.getBoolean("AllowWear", true);
         WEAR_DELAY = General.getInt("WearDelay", 5);
@@ -1432,43 +1307,29 @@ public final class Config {
         SERVER_NEWS = General.getBoolean("ShowServerNews", false);
         ENABLE_COMMUNITY_BOARD = General.getBoolean("EnableCommunityBoard", true);
         BBS_DEFAULT = General.getString("BBSDefault", "_bbshome");
-        USE_SAY_FILTER = General.getBoolean("UseChatFilter", false);
-        CHAT_FILTER_CHARS = General.getString("ChatFilterChars", "^_^");
-        final String[] propertySplit4 = General.getString("BanChatChannels", "GENERAL;SHOUT;WORLD;TRADE;HERO_VOICE").trim().split(";");
-        BAN_CHAT_CHANNELS = new HashSet<>();
-        try {
-            for (String chatId : propertySplit4) {
-                BAN_CHAT_CHANNELS.add(Enum.valueOf(ChatType.class, chatId));
-            }
-        } catch (NumberFormatException nfe) {
-            LOGGER.warn("There was an error while parsing ban chat channels: ", nfe);
-        }
-        WORLD_CHAT_MIN_LEVEL = General.getInt("WorldChatMinLevel", 20);
+
         WORLD_CHAT_POINTS_PER_DAY = General.getInt("WorldChatPointsPerDay", 10);
-        WORLD_CHAT_INTERVAL = General.getDuration("WorldChatInterval", "20secs", Duration.ofSeconds(20));
         ALT_MANOR_REFRESH_TIME = General.getInt("AltManorRefreshTime", 20);
         ALT_MANOR_REFRESH_MIN = General.getInt("AltManorRefreshMin", 0);
         ALT_MANOR_APPROVE_TIME = General.getInt("AltManorApproveTime", 4);
         ALT_MANOR_APPROVE_MIN = General.getInt("AltManorApproveMin", 30);
         ALT_MANOR_MAINTENANCE_MIN = General.getInt("AltManorMaintenanceMin", 6);
-        ALT_MANOR_SAVE_ALL_ACTIONS = General.getBoolean("AltManorSaveAllActions", false);
         ALT_MANOR_SAVE_PERIOD_RATE = General.getInt("AltManorSavePeriodRate", 2);
         ALT_ITEM_AUCTION_ENABLED = General.getBoolean("AltItemAuctionEnabled", true);
         ALT_ITEM_AUCTION_EXPIRED_AFTER = General.getInt("AltItemAuctionExpiredAfter", 14);
         ALT_ITEM_AUCTION_TIME_EXTENDS_ON_BID = General.getInt("AltItemAuctionTimeExtendsOnBid", 0) * 1000;
-        DEFAULT_PUNISH = IllegalActionPunishmentType.findByName(General.getString("DefaultPunish", "KICK"));
+
         DEFAULT_PUNISH_PARAM = General.getInt("DefaultPunishParam", 0);
         ONLY_GM_ITEMS_FREE = General.getBoolean("OnlyGMItemsFree", true);
         JAIL_IS_PVP = General.getBoolean("JailIsPvp", false);
-        JAIL_DISABLE_CHAT = General.getBoolean("JailDisableChat", true);
+
         JAIL_DISABLE_TRANSACTION = General.getBoolean("JailDisableTransaction", false);
         CUSTOM_NPC_DATA = General.getBoolean("CustomNpcData", false);
         CUSTOM_ITEMS_LOAD = General.getBoolean("CustomItemsLoad", false);
-        CUSTOM_MULTISELL_LOAD = General.getBoolean("CustomMultisellLoad", false);
-        CUSTOM_BUYLIST_LOAD = General.getBoolean("CustomBuyListLoad", false);
+
         ALT_BIRTHDAY_GIFT = General.getInt("AltBirthdayGift", 22187);
         ALT_BIRTHDAY_MAIL_SUBJECT = General.getString("AltBirthdayMailSubject", "Happy Birthday!");
-        ALT_BIRTHDAY_MAIL_TEXT = General.getString("AltBirthdayMailText", "Hello Adventurer!! Seeing as you're one year older now, I thought I would send you some birthday cheer :) Please find your birthday pack attached. May these gifts bring you joy and happiness on this very special day." + EOL + EOL + "Sincerely, Alegria");
+        ALT_BIRTHDAY_MAIL_TEXT = General.getString("AltBirthdayMailText", "Hello Adventurer!! Seeing as you're one year older now, I thought I would send you some birthday cheer :) Please find your birthday pack attached. May these gifts bring you joy and happiness on this very special day." + System.lineSeparator().repeat(2) + "Sincerely, Alegria");
         ENABLE_BLOCK_CHECKER_EVENT = General.getBoolean("EnableBlockCheckerEvent", false);
 
         HBCE_FAIR_PLAY = General.getBoolean("HBCEFairPlay", false);
@@ -1545,14 +1406,13 @@ public final class Config {
         // Load Rates config file (if exists)
         final PropertiesParser RatesSettings = new PropertiesParser(RATES_CONFIG_FILE);
 
-        RATE_XP = RatesSettings.getFloat("RateXp", 1);
         RATE_SP = RatesSettings.getFloat("RateSp", 1);
         RATE_PARTY_XP = RatesSettings.getFloat("RatePartyXp", 1);
         RATE_PARTY_SP = RatesSettings.getFloat("RatePartySp", 1);
 
         RATE_INSTANCE_XP = RatesSettings.getFloat("RateInstanceXp", -1);
         if (RATE_INSTANCE_XP < 0) {
-            RATE_INSTANCE_XP = RATE_XP;
+            RATE_INSTANCE_XP = getSettings(RateSettings.class).xp();
         }
         RATE_INSTANCE_SP = RatesSettings.getFloat("RateInstanceSp", -1);
         if (RATE_INSTANCE_SP < 0) {
@@ -1587,7 +1447,7 @@ public final class Config {
         RATE_VITALITY_GAIN = RatesSettings.getFloat("RateVitalityGain", 1);
         RATE_KARMA_LOST = RatesSettings.getFloat("RateKarmaLost", -1);
         if (RATE_KARMA_LOST == -1) {
-            RATE_KARMA_LOST = RATE_XP;
+            RATE_KARMA_LOST = getSettings(RateSettings.class).xp();
         }
         RATE_KARMA_EXP_LOST = RatesSettings.getFloat("RateKarmaExpLost", 1);
         RATE_SIEGE_GUARDS_PRICE = RatesSettings.getFloat("RateSiegeGuardsPrice", 1);
@@ -1784,31 +1644,6 @@ public final class Config {
             LOGGER.info("Loaded " + FILTER_LIST.size() + " Filter Words.");
         } catch (IOException e) {
             LOGGER.warn("Error while loading chat filter words!", e);
-        }
-
-        // Load AutoPotions config file (if exists)
-        final PropertiesParser AutoPotions = new PropertiesParser(CUSTOM_AUTO_POTIONS_CONFIG_FILE);
-
-        AUTO_POTIONS_ENABLED = AutoPotions.getBoolean("AutoPotionsEnabled", false);
-        AUTO_POTIONS_IN_OLYMPIAD = AutoPotions.getBoolean("AutoPotionsInOlympiad", false);
-        AUTO_POTION_MIN_LVL = AutoPotions.getInt("AutoPotionMinimumLevel", 1);
-        AUTO_CP_ENABLED = AutoPotions.getBoolean("AutoCpEnabled", true);
-        AUTO_HP_ENABLED = AutoPotions.getBoolean("AutoHpEnabled", true);
-        AUTO_MP_ENABLED = AutoPotions.getBoolean("AutoMpEnabled", true);
-        AUTO_CP_PERCENTAGE = AutoPotions.getInt("AutoCpPercentage", 70);
-        AUTO_HP_PERCENTAGE = AutoPotions.getInt("AutoHpPercentage", 70);
-        AUTO_MP_PERCENTAGE = AutoPotions.getInt("AutoMpPercentage", 70);
-        AUTO_CP_ITEM_IDS = new ArrayList<>();
-        for (String s : AutoPotions.getString("AutoCpItemIds", "0").split(",")) {
-            AUTO_CP_ITEM_IDS.add(Integer.parseInt(s));
-        }
-        AUTO_HP_ITEM_IDS = new ArrayList<>();
-        for (String s : AutoPotions.getString("AutoHpItemIds", "0").split(",")) {
-            AUTO_HP_ITEM_IDS.add(Integer.parseInt(s));
-        }
-        AUTO_MP_ITEM_IDS = new ArrayList<>();
-        for (String s : AutoPotions.getString("AutoMpItemIds", "0").split(",")) {
-            AUTO_MP_ITEM_IDS.add(Integer.parseInt(s));
         }
 
         // Load Banking config file (if exists)
@@ -2124,10 +1959,13 @@ public final class Config {
         HOPZONE_DUALBOXES_ALLOWED = VoteReward.getInt("HopzoneDualboxesAllowed", 1);
         ALLOW_HOPZONE_GAME_SERVER_REPORT = VoteReward.getBoolean("AllowHopzoneGameServerReport", false);
 
-        // Load WalkerBotProtection config file (if exists)
-        final PropertiesParser WalkerBotProtection = new PropertiesParser(CUSTOM_WALKER_BOT_PROTECTION_CONFIG_FILE);
 
-        L2WALKER_PROTECTION = WalkerBotProtection.getBoolean("L2WalkerProtection", false);
+        // Load Time Limited Zone config file (if exists)
+        final PropertiesParser timeLimitedZoneSettings = new PropertiesParser(TIME_LIMITED_ZONE_CONFIG_FILE);
+        TIME_LIMITED_ZONE_INITIAL_TIME = timeLimitedZoneSettings.getLong("InitialTime", 3600000);
+        TIME_LIMITED_MAX_ADDED_TIME = timeLimitedZoneSettings.getLong("MaximumAddedTime", 18000000);
+        TIME_LIMITED_ZONE_RESET_DELAY = timeLimitedZoneSettings.getLong("ResetDelay", 36000000);
+        TIME_LIMITED_ZONE_TELEPORT_FEE = timeLimitedZoneSettings.getLong("TeleportFee", 10000);
     }
 
     /**

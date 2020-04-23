@@ -1,13 +1,14 @@
 package org.l2j.gameserver.model.actor.instance;
 
+import org.l2j.commons.util.Util;
 import org.l2j.gameserver.Config;
-import org.l2j.gameserver.data.xml.impl.SkillData;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
 import org.l2j.gameserver.datatables.SchemeBufferTable;
 import org.l2j.gameserver.model.actor.Creature;
 import org.l2j.gameserver.model.actor.Npc;
 import org.l2j.gameserver.model.actor.Summon;
 import org.l2j.gameserver.model.actor.templates.NpcTemplate;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.network.serverpackets.html.NpcHtmlMessage;
 
 import java.text.NumberFormat;
@@ -38,9 +39,9 @@ public class SchemeBuffer extends Npc {
             }
 
             if (groupType.equalsIgnoreCase(type)) {
-                sb.append("<td width=65>" + type + "</td>");
+                sb.append("<td width=65>").append(type).append("</td>");
             } else {
-                sb.append("<td width=65><a action=\"bypass -h npc_%objectId%_editschemes " + type + " " + schemeName + " 1\">" + type + "</a></td>");
+                sb.append("<td width=65><a action=\"bypass -h npc_%objectId%_editschemes;").append(type).append(";").append(schemeName).append(";1\">").append(type).append("</a></td>");
             }
 
             count++;
@@ -81,12 +82,13 @@ public class SchemeBuffer extends Npc {
     }
 
     private static long getCountOf(List<Integer> skills, boolean dances) {
-        return skills.stream().filter(sId -> SkillData.getInstance().getSkill(sId, 1).isDance() == dances).count();
+        return skills.stream().filter(sId -> SkillEngine.getInstance().getSkill(sId, 1).isDance() == dances).count();
     }
 
     @Override
     public void onBypassFeedback(Player player, String command) {
-        StringTokenizer st = new StringTokenizer(command, " ");
+        command = command.replace("createscheme ", "createscheme;");
+        StringTokenizer st = new StringTokenizer(command, ";");
         String currentCommand = st.nextToken();
 
         if (currentCommand.startsWith("menu")) {
@@ -139,7 +141,7 @@ public class SchemeBuffer extends Npc {
                 player.sendPacket(YOU_DO_NOT_HAVE_A_PET);
             } else if ((cost == 0) || player.reduceAdena("NPC Buffer", cost, this, true)) {
                 for (int skillId : SchemeBufferTable.getInstance().getScheme(player.getObjectId(), schemeName)) {
-                    SkillData.getInstance().getSkill(skillId, SkillData.getInstance().getMaxLevel(skillId)).applyEffects(this, target);
+                    SkillEngine.getInstance().getSkill(skillId, SkillEngine.getInstance().getMaxLevel(skillId)).applyEffects(this, target);
                 }
             }
         } else if (currentCommand.startsWith("editschemes")) {
@@ -154,7 +156,7 @@ public class SchemeBuffer extends Npc {
             final List<Integer> skills = SchemeBufferTable.getInstance().getScheme(player.getObjectId(), schemeName);
 
             if (currentCommand.startsWith("skillselect") && !schemeName.equalsIgnoreCase("none")) {
-                final Skill skill = SkillData.getInstance().getSkill(skillId, SkillData.getInstance().getMaxLevel(skillId));
+                final Skill skill = SkillEngine.getInstance().getSkill(skillId, SkillEngine.getInstance().getMaxLevel(skillId));
                 if (skill.isDance()) {
                     if (getCountOf(skills, true) < Config.DANCES_MAX_AMOUNT) {
                         skills.add(skillId);
@@ -162,7 +164,7 @@ public class SchemeBuffer extends Npc {
                         player.sendMessage("This scheme has reached the maximum amount of dances/songs.");
                     }
                 } else {
-                    if (getCountOf(skills, false) < player.getStat().getMaxBuffCount()) {
+                    if (getCountOf(skills, false) < player.getStats().getMaxBuffCount()) {
                         skills.add(skillId);
                     } else {
                         player.sendMessage("This scheme has reached the maximum amount of buffs.");
@@ -175,9 +177,14 @@ public class SchemeBuffer extends Npc {
             showEditSchemeWindow(player, groupType, schemeName, page);
         } else if (currentCommand.startsWith("createscheme")) {
             try {
-                final String schemeName = st.nextToken();
+                final String schemeName = st.nextToken().trim();
                 if (schemeName.length() > 14) {
-                    player.sendMessage("Scheme's name must contain up to 14 chars. Spaces are trimmed.");
+                    player.sendMessage("Scheme's name must contain up to 14 chars.");
+                    return;
+                }
+
+                if (!Util.isAlphaNumeric(schemeName.replace(" ", "").replace(".", "").replace(",", "").replace("-", "").replace("+", "").replace("!", "").replace("?", ""))) {
+                    player.sendMessage("Please use plain alphanumeric characters.");
                     return;
                 }
 
@@ -197,7 +204,7 @@ public class SchemeBuffer extends Npc {
                 SchemeBufferTable.getInstance().setScheme(player.getObjectId(), schemeName.trim(), new ArrayList<>());
                 showGiveBuffsWindow(player);
             } catch (Exception e) {
-                player.sendMessage("Scheme's name must contain up to 14 chars. Spaces are trimmed.");
+                player.sendMessage("Scheme's name must contain up to 14 chars.");
             }
         } else if (currentCommand.startsWith("deletescheme")) {
             try {
@@ -241,10 +248,10 @@ public class SchemeBuffer extends Npc {
             for (Map.Entry<String, ArrayList<Integer>> scheme : schemes.entrySet()) {
                 final int cost = getFee(scheme.getValue());
                 sb.append("<font color=\"LEVEL\">" + scheme.getKey() + " [" + scheme.getValue().size() + " skill(s)]" + ((cost > 0) ? " - cost: " + NumberFormat.getInstance(Locale.ENGLISH).format(cost) : "") + "</font><br1>");
-                sb.append("<a action=\"bypass -h npc_%objectId%_givebuffs " + scheme.getKey() + " " + cost + "\">Use on Me</a>&nbsp;|&nbsp;");
-                sb.append("<a action=\"bypass -h npc_%objectId%_givebuffs " + scheme.getKey() + " " + cost + " pet\">Use on Pet</a>&nbsp;|&nbsp;");
-                sb.append("<a action=\"bypass -h npc_%objectId%_editschemes Buffs " + scheme.getKey() + " 1\">Edit</a>&nbsp;|&nbsp;");
-                sb.append("<a action=\"bypass -h npc_%objectId%_deletescheme " + scheme.getKey() + "\">Delete</a><br>");
+                sb.append("<a action=\"bypass -h npc_%objectId%_givebuffs;" + scheme.getKey() + ";" + cost + "\">Use on Me</a>&nbsp;|&nbsp;");
+                sb.append("<a action=\"bypass -h npc_%objectId%_givebuffs;" + scheme.getKey() + ";" + cost + ";pet\">Use on Pet</a>&nbsp;|&nbsp;");
+                sb.append("<a action=\"bypass -h npc_%objectId%_editschemes;Buffs;" + scheme.getKey() + ";1\">Edit</a>&nbsp;|&nbsp;");
+                sb.append("<a action=\"bypass -h npc_%objectId%_deletescheme;" + scheme.getKey() + "\">Delete</a><br>");
             }
         }
 
@@ -270,7 +277,7 @@ public class SchemeBuffer extends Npc {
 
         html.setFile(player, getHtmlPath(getId(), 2));
         html.replace("%schemename%", schemeName);
-        html.replace("%count%", getCountOf(schemeSkills, false) + " / " + player.getStat().getMaxBuffCount() + " buffs, " + getCountOf(schemeSkills, true) + " / " + Config.DANCES_MAX_AMOUNT + " dances/songs");
+        html.replace("%count%", getCountOf(schemeSkills, false) + " / " + player.getStats().getMaxBuffCount() + " buffs, " + getCountOf(schemeSkills, true) + " / " + Config.DANCES_MAX_AMOUNT + " dances/songs");
         html.replace("%typesframe%", getTypesFrame(groupType, schemeName));
         html.replace("%skilllistframe%", getGroupSkillList(player, groupType, schemeName, page));
         html.replace("%objectId%", getObjectId());
@@ -305,32 +312,31 @@ public class SchemeBuffer extends Npc {
 
         int row = 0;
         for (int skillId : skills) {
-            sb.append(((row % 2) == 0 ? "<table width=\"280\" bgcolor=\"000000\"><tr>" : "<table width=\"280\"><tr>"));
+            final Skill skill = SkillEngine.getInstance().getSkill(skillId, 1);
+            sb.append(row++ % 2 == 0 ? "<table width=\"280\" bgcolor=\"000000\"><tr>" : "<table width=\"280\"><tr>")
+                .append("<td height=40 width=40><img src=\"").append(skill.getIcon()).append("\" width=32 height=32></td><td width=190>").append(skill.getName())
+                .append("<br1><font color=\"B09878\">").append(SchemeBufferTable.getInstance().getAvailableBuff(skillId).getDescription())
 
-            final Skill skill = SkillData.getInstance().getSkill(skillId, 1);
-            if (schemeSkills.contains(skillId)) {
-                sb.append("<td height=40 width=40><img src=\"" + skill.getIcon() + "\" width=32 height=32></td><td width=190>" + skill.getName() + "<br1><font color=\"B09878\">" + SchemeBufferTable.getInstance().getAvailableBuff(skillId).getDescription() + "</font></td><td><button value=\" \" action=\"bypass -h npc_%objectId%_skillunselect " + groupType + " " + schemeName + " " + skillId + " " + page + "\" width=32 height=32 back=\"L2UI_CH3.mapbutton_zoomout2\" fore=\"L2UI_CH3.mapbutton_zoomout1\"></td>");
-            } else {
-                sb.append("<td height=40 width=40><img src=\"" + skill.getIcon() + "\" width=32 height=32></td><td width=190>" + skill.getName() + "<br1><font color=\"B09878\">" + SchemeBufferTable.getInstance().getAvailableBuff(skillId).getDescription() + "</font></td><td><button value=\" \" action=\"bypass -h npc_%objectId%_skillselect " + groupType + " " + schemeName + " " + skillId + " " + page + "\" width=32 height=32 back=\"L2UI_CH3.mapbutton_zoomin2\" fore=\"L2UI_CH3.mapbutton_zoomin1\"></td>");
-            }
+                .append("</font></td><td><button value=\" \" action=\"bypass -h npc_%objectId%_").append(schemeSkills.contains(skillId) ? "skillunselect;" :"skillselect;")
 
-            sb.append("</tr></table><img src=\"L2UI.SquareGray\" width=277 height=1>");
-            row++;
+                .append(groupType).append(";").append(schemeName).append(";").append(skillId).append(";").append(page)
+                .append("\" width=32 height=32 back=\"L2UI_CH3.mapbutton_zoomin2\" fore=\"L2UI_CH3.mapbutton_zoomin1\"></td>")
+                .append("</tr></table><img src=\"L2UI.SquareGray\" width=277 height=1>");
         }
 
         // Build page footer.
         sb.append("<br><img src=\"L2UI.SquareGray\" width=277 height=1><table width=\"100%\" bgcolor=000000><tr>");
 
         if (page > 1) {
-            sb.append("<td align=left width=70><a action=\"bypass -h npc_" + getObjectId() + "_editschemes " + groupType + " " + schemeName + " " + (page - 1) + "\">Previous</a></td>");
+            sb.append("<td align=left width=70><a action=\"bypass -h npc_").append(getObjectId()).append("_editschemes;").append(groupType).append(";").append(schemeName).append(";").append(page - 1).append("\">Previous</a></td>");
         } else {
             sb.append("<td align=left width=70>Previous</td>");
         }
 
-        sb.append("<td align=center width=100>Page " + page + "</td>");
+        sb.append("<td align=center width=100>Page ").append(page).append("</td>");
 
         if (page < max) {
-            sb.append("<td align=right width=70><a action=\"bypass -h npc_" + getObjectId() + "_editschemes " + groupType + " " + schemeName + " " + (page + 1) + "\">Next</a></td>");
+            sb.append("<td align=right width=70><a action=\"bypass -h npc_").append(getObjectId()).append("_editschemes;").append(groupType).append(";").append(schemeName).append(";").append(page + 1).append("\">Next</a></td>");
         } else {
             sb.append("<td align=right width=70>Next</td>");
         }

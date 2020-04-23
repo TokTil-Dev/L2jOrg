@@ -1,7 +1,7 @@
 package org.l2j.gameserver.network.clientpackets;
 
 import org.l2j.gameserver.Config;
-import org.l2j.gameserver.data.xml.impl.SkillData;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
 import org.l2j.gameserver.data.xml.impl.SkillTreesData;
 import org.l2j.gameserver.enums.*;
 import org.l2j.gameserver.model.ClanPrivilege;
@@ -19,7 +19,7 @@ import org.l2j.gameserver.model.holders.ItemHolder;
 import org.l2j.gameserver.model.holders.SkillHolder;
 import org.l2j.gameserver.model.quest.QuestState;
 import org.l2j.gameserver.model.skills.CommonSkill;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.model.variables.PlayerVariables;
 import org.l2j.gameserver.network.SystemMessageId;
 import org.l2j.gameserver.network.serverpackets.*;
@@ -98,7 +98,7 @@ public final class RequestAcquireSkill extends ClientPacket {
         }
 
         if ((_level < 1) || (_level > 1000) || (_id < 1) || (_id > 64000)) {
-            GameUtils.handleIllegalPlayerAction(activeChar, "Wrong Packet Data in Aquired Skill", Config.DEFAULT_PUNISH);
+            GameUtils.handleIllegalPlayerAction(activeChar, "Wrong Packet Data in Aquired Skill");
             LOGGER.warn("Recived Wrong Packet Data in Aquired Skill - id: " + _id + " level: " + _level + " for " + activeChar);
             return;
         }
@@ -108,8 +108,8 @@ public final class RequestAcquireSkill extends ClientPacket {
             return;
         }
 
-        final Skill existingSkill = activeChar.getKnownSkill(_id); // Mobius: Keep existing sublevel.
-        final Skill skill = SkillData.getInstance().getSkill(_id, _level, existingSkill == null ? 0 : existingSkill.getSubLevel());
+
+        final Skill skill = SkillEngine.getInstance().getSkill(_id, _level);
         if (skill == null) {
             LOGGER.warn(RequestAcquireSkill.class.getSimpleName() + ": Player " + activeChar.getName() + " is trying to learn a null skill Id: " + _id + " level: " + _level + "!");
             return;
@@ -303,7 +303,7 @@ public final class RequestAcquireSkill extends ClientPacket {
                 // Check for required skills.
                 if (!skillLearn.getPreReqSkills().isEmpty()) {
                     for (SkillHolder skill : skillLearn.getPreReqSkills()) {
-                        if (player.getSkillLevel(skill.getSkillId()) < skill.getSkillLevel()) {
+                        if (player.getSkillLevel(skill.getSkillId()) < skill.getLevel()) {
                             if (skill.getSkillId() == CommonSkill.ONYX_BEAST_TRANSFORMATION.getId()) {
                                 player.sendPacket(SystemMessageId.YOU_MUST_LEARN_THE_ONYX_BEAST_SKILL_BEFORE_YOU_CAN_LEARN_FURTHER_SKILLS);
                             } else {
@@ -389,7 +389,7 @@ public final class RequestAcquireSkill extends ClientPacket {
         player.addSkill(skill, store);
 
         player.sendItemList();
-        player.sendPacket(new ShortCutInit(player));
+        player.sendPacket(new ShortCutInit());
         player.sendPacket(new ExBasicActionList(ExBasicActionList.DEFAULT_ACTION_LIST));
         player.sendSkillList(skill.getId());
 

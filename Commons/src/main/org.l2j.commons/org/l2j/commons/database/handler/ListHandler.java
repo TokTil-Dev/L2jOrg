@@ -49,7 +49,7 @@ public class ListHandler implements TypeHandler<List<?>> {
     }
 
     @Override
-    public void setParameter(PreparedStatement statement, int parameterIndex, List arg) {
+    public void setParameter(PreparedStatement statement, int parameterIndex, List<?> arg) {
         throw new UnsupportedOperationException();
     }
 

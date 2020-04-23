@@ -1,26 +1,10 @@
-/*
- * This file is part of the L2J Mobius project.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
 package org.l2j.gameserver.data.xml.impl;
 
 import org.l2j.gameserver.enums.MacroType;
 import org.l2j.gameserver.enums.ShortcutType;
 import org.l2j.gameserver.model.Macro;
 import org.l2j.gameserver.model.MacroCmd;
-import org.l2j.gameserver.model.Shortcut;
+import org.l2j.gameserver.data.database.data.Shortcut;
 import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.model.base.ClassId;
 import org.l2j.gameserver.model.items.instance.Item;
@@ -205,7 +189,7 @@ public final class InitialShortcutData extends GameXmlReader {
         final int shortcutId = parseInteger(attrs, "shortcutId");
         final int shortcutLevel = parseInteger(attrs, "shortcutLevel", 0);
         final int characterType = parseInteger(attrs, "characterType", 0);
-        return new Shortcut(slotId, pageId, shortcutType, shortcutId, shortcutLevel, 0, characterType);
+        return new Shortcut(Shortcut.pageAndSlotToClientId(pageId, slotId), shortcutType, shortcutId, shortcutLevel, 0, characterType);
     }
 
     /**
@@ -249,7 +233,7 @@ public final class InitialShortcutData extends GameXmlReader {
 
         // Register global shortcuts.
         for (Shortcut shortcut : _initialGlobalShortcutList) {
-            int shortcutId = shortcut.getId();
+            int shortcutId = shortcut.getShortcutId();
             switch (shortcut.getType()) {
                 case ITEM: {
                     final Item item = player.getInventory().getItemByItemId(shortcutId);
@@ -276,7 +260,7 @@ public final class InitialShortcutData extends GameXmlReader {
             }
 
             // Register shortcut
-            final Shortcut newShortcut = new Shortcut(shortcut.getSlot(), shortcut.getPage(), shortcut.getType(), shortcutId, shortcut.getLevel(), shortcut.getSubLevel(), shortcut.getCharacterType());
+            final Shortcut newShortcut = new Shortcut(shortcut.getClientId(), shortcut.getType(), shortcutId, shortcut.getLevel(), shortcut.getSubLevel(), shortcut.getCharacterType());
             player.sendPacket(new ShortCutRegister(newShortcut));
             player.registerShortCut(newShortcut);
         }
@@ -284,7 +268,7 @@ public final class InitialShortcutData extends GameXmlReader {
         // Register class specific shortcuts.
         if (_initialShortcutData.containsKey(player.getClassId())) {
             for (Shortcut shortcut : _initialShortcutData.get(player.getClassId())) {
-                int shortcutId = shortcut.getId();
+                int shortcutId = shortcut.getShortcutId();
                 switch (shortcut.getType()) {
                     case ITEM: {
                         final Item item = player.getInventory().getItemByItemId(shortcutId);
@@ -295,7 +279,7 @@ public final class InitialShortcutData extends GameXmlReader {
                         break;
                     }
                     case SKILL: {
-                        if (!player.getSkills().containsKey(shortcut.getId())) {
+                        if (!player.getSkills().containsKey(shortcut.getShortcutId())) {
                             continue;
                         }
                         break;
@@ -310,7 +294,7 @@ public final class InitialShortcutData extends GameXmlReader {
                     }
                 }
                 // Register shortcut
-                final Shortcut newShortcut = new Shortcut(shortcut.getSlot(), shortcut.getPage(), shortcut.getType(), shortcutId, shortcut.getLevel(), shortcut.getSubLevel(), shortcut.getCharacterType());
+                final Shortcut newShortcut = new Shortcut(shortcut.getClientId(), shortcut.getType(), shortcutId, shortcut.getLevel(), shortcut.getSubLevel(), shortcut.getCharacterType());
                 player.sendPacket(new ShortCutRegister(newShortcut));
                 player.registerShortCut(newShortcut);
             }

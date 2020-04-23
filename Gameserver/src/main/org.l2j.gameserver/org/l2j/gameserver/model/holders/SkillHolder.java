@@ -1,7 +1,9 @@
 package org.l2j.gameserver.model.holders;
 
-import org.l2j.gameserver.data.xml.impl.SkillData;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
+import org.l2j.gameserver.engine.skill.api.Skill;
+
+import static java.util.Objects.isNull;
 
 /**
  * Simple class for storing skill id/level.
@@ -12,6 +14,7 @@ public class SkillHolder {
     private final int _skillId;
     private final int _skillLevel;
     private final int _skillSubLevel;
+    private Skill skill;
 
     public SkillHolder(int skillId, int skillLevel) {
         _skillId = skillId;
@@ -35,7 +38,7 @@ public class SkillHolder {
         return _skillId;
     }
 
-    public final int getSkillLevel() {
+    public final int getLevel() {
         return _skillLevel;
     }
 
@@ -43,8 +46,15 @@ public class SkillHolder {
         return _skillSubLevel;
     }
 
+    public final int getMaxLevel() {
+        return SkillEngine.getInstance().getMaxLevel(_skillId);
+    }
+
     public final Skill getSkill() {
-        return SkillData.getInstance().getSkill(_skillId, Math.max(_skillLevel, 1), _skillSubLevel);
+        if(isNull(skill)) {
+            skill = SkillEngine.getInstance().getSkill(_skillId, Math.max(_skillLevel, 1));
+        }
+        return skill;
     }
 
     @Override
@@ -58,7 +68,7 @@ public class SkillHolder {
         }
 
         final SkillHolder holder = (SkillHolder) obj;
-        return (holder.getSkillId() == _skillId) && (holder.getSkillLevel() == _skillLevel) && (holder.getSkillSubLevel() == _skillSubLevel);
+        return (holder.getSkillId() == _skillId) && (holder.getLevel() == _skillLevel) && (holder.getSkillSubLevel() == _skillSubLevel);
     }
 
     @Override

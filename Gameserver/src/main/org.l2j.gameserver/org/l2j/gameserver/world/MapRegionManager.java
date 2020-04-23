@@ -1,9 +1,11 @@
 package org.l2j.gameserver.world;
 
-import org.l2j.gameserver.data.xml.impl.ClanHallData;
+import org.l2j.gameserver.data.xml.impl.ClanHallManager;
 import org.l2j.gameserver.instancemanager.CastleManager;
 import org.l2j.gameserver.instancemanager.FortDataManager;
-import org.l2j.gameserver.model.*;
+import org.l2j.gameserver.model.Location;
+import org.l2j.gameserver.model.TeleportWhereType;
+import org.l2j.gameserver.model.WorldObject;
 import org.l2j.gameserver.model.actor.Creature;
 import org.l2j.gameserver.model.actor.Npc;
 import org.l2j.gameserver.model.actor.instance.Player;
@@ -12,11 +14,11 @@ import org.l2j.gameserver.model.entity.Fort;
 import org.l2j.gameserver.model.entity.Siege;
 import org.l2j.gameserver.model.instancezone.Instance;
 import org.l2j.gameserver.model.interfaces.ILocational;
-import org.l2j.gameserver.world.zone.ZoneManager;
-import org.l2j.gameserver.world.zone.type.RespawnZone;
 import org.l2j.gameserver.settings.ServerSettings;
 import org.l2j.gameserver.util.GameXmlReader;
 import org.l2j.gameserver.util.MathUtil;
+import org.l2j.gameserver.world.zone.ZoneManager;
+import org.l2j.gameserver.world.zone.type.RespawnZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -100,7 +102,7 @@ public final class MapRegionManager extends GameXmlReader {
     }
 
     public final int getMapRegionLocId(WorldObject obj) {
-        return isNull(obj) ? 0 :  getMapRegionLocId(obj.getX(), obj.getY());
+        return isNull(obj) ? 0 : getMapRegionLocId(obj.getX(), obj.getY());
     }
 
     public final int getMapRegionLocId(int locX, int locY) {
@@ -184,7 +186,16 @@ public final class MapRegionManager extends GameXmlReader {
     private Location getChaoticLocation(Player player) {
         try {
             final RespawnZone zone = ZoneManager.getInstance().getZone(player, RespawnZone.class);
-            return nonNull(zone) ? getRestartRegion(player, zone.getRespawnPoint(player)).getChaoticSpawnLoc() : getMapRegion(player).getChaoticSpawnLoc();
+            if(nonNull(zone)) {
+                return getRestartRegion(player, zone.getRespawnPoint(player)).getChaoticSpawnLoc();
+            }
+
+            if (getMapRegion(player).getBannedRaces().containsKey(player.getRace()))
+            {
+                return regions.get(getMapRegion(player).getBannedRaces().get(player.getRace())).getChaoticSpawnLoc();
+            }
+
+            return  getMapRegion(player).getChaoticSpawnLoc();
         } catch (Exception e) {
             LOGGER.warn(e.getMessage(), e);
             if (player.isFlyingMounted()) {
@@ -213,7 +224,7 @@ public final class MapRegionManager extends GameXmlReader {
             return null;
         }
 
-        var clanHall = ClanHallData.getInstance().getClanHallByClan(player.getClan());
+        var clanHall = ClanHallManager.getInstance().getClanHallByClan(player.getClan());
         if ((nonNull(clanHall))) {
             return clanHall.getOwnerLocation();
         }
@@ -233,7 +244,7 @@ public final class MapRegionManager extends GameXmlReader {
             }
         }
 
-        if (castle.getResidenceId() > 0) {
+        if (castle.getId() > 0) {
             if (player.getReputation() < 0) {
                 return castle.getResidenceZone().getChaoticSpawnLoc();
             }
@@ -252,7 +263,7 @@ public final class MapRegionManager extends GameXmlReader {
             }
         }
 
-        if (fort.getResidenceId() > 0) {
+        if (fort.getId() > 0) {
             if (player.getReputation() < 0) {
                 return fort.getResidenceZone().getChaoticSpawnLoc();
             }

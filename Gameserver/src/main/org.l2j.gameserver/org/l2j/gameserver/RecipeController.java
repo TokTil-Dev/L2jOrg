@@ -3,7 +3,7 @@ package org.l2j.gameserver;
 import org.l2j.commons.threading.ThreadPool;
 import org.l2j.commons.util.Rnd;
 import org.l2j.gameserver.data.xml.impl.RecipeData;
-import org.l2j.gameserver.datatables.ItemTable;
+import org.l2j.gameserver.engine.item.ItemEngine;
 import org.l2j.gameserver.enums.StatType;
 import org.l2j.gameserver.enums.StatusUpdateType;
 import org.l2j.gameserver.model.*;
@@ -12,10 +12,11 @@ import org.l2j.gameserver.model.itemcontainer.Inventory;
 import org.l2j.gameserver.model.items.ItemTemplate;
 import org.l2j.gameserver.model.items.instance.Item;
 import org.l2j.gameserver.model.skills.CommonSkill;
-import org.l2j.gameserver.model.skills.Skill;
-import org.l2j.gameserver.model.stats.Stats;
+import org.l2j.gameserver.engine.skill.api.Skill;
+import org.l2j.gameserver.model.stats.Stat;
 import org.l2j.gameserver.network.SystemMessageId;
 import org.l2j.gameserver.network.serverpackets.*;
+import org.l2j.gameserver.settings.GeneralSettings;
 import org.l2j.gameserver.util.GameUtils;
 import org.l2j.gameserver.world.WorldTimeController;
 import org.slf4j.Logger;
@@ -26,6 +27,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static org.l2j.commons.configuration.Configurator.getSettings;
 
 
 public class RecipeController {
@@ -58,7 +61,7 @@ public class RecipeController {
         final List<RecipeList> commonRecipes = Arrays.asList(manufacturer.getCommonRecipeBook());
 
         if (!dwarfRecipes.contains(recipeList) && !commonRecipes.contains(recipeList)) {
-            GameUtils.handleIllegalPlayerAction(player, "Warning!! Character " + player.getName() + " of account " + player.getAccountName() + " sent a false recipe id.", Config.DEFAULT_PUNISH);
+            GameUtils.handleIllegalPlayerAction(player, "Warning!! Character " + player.getName() + " of account " + player.getAccountName() + " sent a false recipe id.");
             return;
         }
 
@@ -95,7 +98,7 @@ public class RecipeController {
         final List<RecipeList> commonRecipes = Arrays.asList(player.getCommonRecipeBook());
 
         if (!dwarfRecipes.contains(recipeList) && !commonRecipes.contains(recipeList)) {
-            GameUtils.handleIllegalPlayerAction(player, "Warning!! Character " + player.getName() + " of account " + player.getAccountName() + " sent a false recipe id.", Config.DEFAULT_PUNISH);
+            GameUtils.handleIllegalPlayerAction(player, "Warning!! Character " + player.getName() + " of account " + player.getAccountName() + " sent a false recipe id.");
             return;
         }
 
@@ -273,7 +276,7 @@ public class RecipeController {
 
                 // if still not empty, schedule another pass
                 if (!_items.isEmpty()) {
-                    _delay = (int) (Config.ALT_GAME_CREATION_SPEED * _player.getStat().getReuseTime(_skill) * WorldTimeController.TICKS_PER_SECOND * WorldTimeController.MILLIS_IN_TICK);
+                    _delay = (int) (Config.ALT_GAME_CREATION_SPEED * _player.getStats().getReuseTime(_skill) * WorldTimeController.TICKS_PER_SECOND * WorldTimeController.MILLIS_IN_TICK);
 
                     // FIXME: please fix this packet to show crafting animation (somebody)
                     final MagicSkillUse msk = new MagicSkillUse(_player, _skillId, _skillLevel, _delay, 0);
@@ -516,7 +519,7 @@ public class RecipeController {
             final int rareProdId = _recipeList.getRareItemId();
             int itemId = _recipeList.getItemId();
             int itemCount = _recipeList.getCount();
-            final ItemTemplate template = ItemTable.getInstance().getTemplate(itemId);
+            final ItemTemplate template = ItemEngine.getInstance().getTemplate(itemId);
 
             // check that the current recipe has a rare production or not
             if ((rareProdId != -1) && ((rareProdId == itemId) || Config.CRAFT_MASTERWORK)) {
@@ -600,7 +603,7 @@ public class RecipeController {
 
                 // Added multiplication of Creation speed with XP/SP gain slower crafting -> more XP,
                 // faster crafting -> less XP you can use ALT_GAME_CREATION_XP_RATE/SP to modify XP/SP gained (default = 1)
-                _player.addExpAndSp((int) _player.getStat().getValue(Stats.EXPSP_RATE, _exp * Config.ALT_GAME_CREATION_XP_RATE * Config.ALT_GAME_CREATION_SPEED), (int) _player.getStat().getValue(Stats.EXPSP_RATE, _sp * Config.ALT_GAME_CREATION_SP_RATE * Config.ALT_GAME_CREATION_SPEED));
+                _player.addExpAndSp((int) _player.getStats().getValue(Stat.EXPSP_RATE, _exp * Config.ALT_GAME_CREATION_XP_RATE * Config.ALT_GAME_CREATION_SPEED), (int) _player.getStats().getValue(Stat.EXPSP_RATE, _sp * Config.ALT_GAME_CREATION_SP_RATE * Config.ALT_GAME_CREATION_SPEED));
             }
             updateMakeInfo(true); // success
         }

@@ -1,24 +1,8 @@
-/*
- * This file is part of the L2J Mobius project.
- * 
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
 package handlers.itemhandlers;
 
 import org.l2j.commons.util.Rnd;
 import org.l2j.gameserver.Config;
-import org.l2j.gameserver.datatables.ItemTable;
+import org.l2j.gameserver.engine.item.ItemEngine;
 import org.l2j.gameserver.handler.IItemHandler;
 import org.l2j.gameserver.model.ExtractableProduct;
 import org.l2j.gameserver.model.actor.Playable;
@@ -52,7 +36,7 @@ public class ExtractableItems implements IItemHandler
 		}
 		
 		final Player activeChar = playable.getActingPlayer();
-		final EtcItem etcitem = (EtcItem) item.getItem();
+		final EtcItem etcitem = (EtcItem) item.getTemplate();
 		final List<ExtractableProduct> exitems = etcitem.getExtractableItems();
 		if (exitems == null)
 		{
@@ -100,7 +84,7 @@ public class ExtractableItems implements IItemHandler
 						boolean alreadyExtracted = false;
 						for (Item i : extractedItems.keySet())
 						{
-							if (i.getItem().getId() == expi.getId())
+							if (i.getTemplate().getId() == expi.getId())
 							{
 								alreadyExtracted = true;
 								break;
@@ -111,7 +95,7 @@ public class ExtractableItems implements IItemHandler
 							continue;
 						}
 						
-						if (ItemTable.getInstance().getTemplate(expi.getId()).isStackable() || (createItemAmount == 1))
+						if (ItemEngine.getInstance().getTemplate(expi.getId()).isStackable() || (createItemAmount == 1))
 						{
 							final Item newItem = activeChar.addItem("Extract", expi.getId(), createItemAmount, activeChar, false);
 							if (expi.getMaxEnchant() > 0)
@@ -159,7 +143,7 @@ public class ExtractableItems implements IItemHandler
 						continue;
 					}
 					
-					if (ItemTable.getInstance().getTemplate(expi.getId()).isStackable() || (createItemAmount == 1))
+					if (ItemEngine.getInstance().getTemplate(expi.getId()).isStackable() || (createItemAmount == 1))
 					{
 						final Item newItem = activeChar.addItem("Extract", expi.getId(), createItemAmount, activeChar, false);
 						if (expi.getMaxEnchant() > 0)

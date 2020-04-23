@@ -1,11 +1,16 @@
 package org.l2j.gameserver.network.serverpackets.rank;
 
+import org.l2j.gameserver.data.database.RankManager;
+import org.l2j.gameserver.data.database.data.RankData;
+import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.network.GameClient;
 import org.l2j.gameserver.network.ServerPacketId;
 import org.l2j.gameserver.network.serverpackets.ServerPacket;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+
+import static java.util.Objects.nonNull;
 
 /**
  * @author JoeAlisson
@@ -29,47 +34,47 @@ public class ExRankList extends ServerPacket {
         writeByte(scope);
         writeInt(race);
 
-       List<Ranker> rankers = new ArrayList<>();
-        for (int i = 0; i < 5; i++) {
-            addRanker(rankers);
-        }
+        List<RankData> rankers = switch (group) {
+            case 0 -> listServerRankers(client.getPlayer(), scope);
+            case 1 -> listRaceRankers(client.getPlayer(), scope, race);
+            case 2 -> listClanRankers(client.getPlayer());
+            case 3 -> listFriendsRankers(client.getPlayer());
+            default -> Collections.emptyList();
+        };
 
         writeInt(rankers.size());
 
-        for (Ranker ranker : rankers) {
-            writeSizedString(ranker.name);
-            writeSizedString(ranker.pledgeName);
-            writeInt(ranker.level);
-            writeInt(ranker.rClass);
-            writeInt(ranker.race);
-            writeInt(ranker.rank);
-            writeInt(ranker.serverRankSnapshot);
-            writeInt(ranker.raceRankSnapshot);
+        for (var ranker : rankers) {
+            writeSizedString(ranker.getPlayerName());
+            writeSizedString(ranker.getClanName());
+            writeInt(ranker.getLevel());
+            writeInt(ranker.getClassId());
+            writeInt(ranker.getRace());
+            writeInt(ranker.getRank());
+            writeInt(ranker.getRankSnapshot());
+            writeInt(ranker.getRankRaceSnapshot());
         }
     }
 
-
-    private static void addRanker(List<Ranker>  rankers) {
-        var ranker = new Ranker();
-        ranker.name = "Ranker" + rankers.size();
-        ranker.pledgeName = "ClanRanker" + rankers.size();
-        ranker.level = 80 - rankers.size();
-        ranker.race = rankers.size();
-        ranker.rClass = 20 + rankers.size();
-        ranker.rank = 1 + rankers.size();
-        ranker.serverRankSnapshot = ranker.rank + (rankers.size() % 2 == 0 ? 2 : - 1);
-        ranker.raceRankSnapshot = rankers.size();
-        rankers.add(ranker);
+    private List<RankData> listRaceRankers(Player player, byte scope, int race) {
+        if(scope == 0) {
+            return RankManager.getInstance().getRaceRankers(race);
+        }
+        return RankManager.getInstance().getRaceRankersByPlayer(player);
     }
 
-    private static class Ranker {
-        String name;
-        String pledgeName;
-        int level;
-        int rClass;
-        int rank;
-        int race;
-        int serverRankSnapshot;
-        int raceRankSnapshot;
+    private List<RankData> listServerRankers(Player player, byte scope) {
+        if(scope == 0) {
+            return RankManager.getInstance().getRankers();
+        }
+        return RankManager.getInstance().getRankersByPlayer(player);
+    }
+
+    private List<RankData> listFriendsRankers(Player player) {
+        return !player.getFriendList().isEmpty() ?  RankManager.getInstance().getFriendRankers(player) : Collections.emptyList();
+    }
+
+    private List<RankData> listClanRankers(Player player) {
+        return nonNull(player.getClan()) ?  RankManager.getInstance().getClanRankers(player.getClanId()) : Collections.emptyList();
     }
 }

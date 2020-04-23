@@ -1,21 +1,4 @@
-/*
- * This file is part of the L2J Mobius project.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
 package org.l2j.gameserver.model.skills;
-
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -224,8 +207,8 @@ public enum AbnormalType {
     CLAN_TEAMWORK(-1),
     SONG_OF_ARCHERY(-1),
     DANCE_OF_SAGE(-1),
-    SONG_WEAPON(-1), // TODO: need find proper name
-    HEAL_RESISTANCE(-1), // TODO: need find proper name
+	SONG_WEAPON(-1),
+	HEAL_RESISTANCE(-1),
     AVE_BROOCH(-1),
     AB_HAWK_EYE(0),
     ALL_ATTACK_DOWN(1),
@@ -518,6 +501,13 @@ public enum AbnormalType {
     AGATHION_SONG_DANCE(444),
     INSIDE_POSITION(593),
     STEEL_MIND(596),
+	GREATER_PA_UP(597),
+	GREATER_PD_UP(598),
+	GREATER_PA_PD_UP(600),
+	QUEEN_OF_CAT_BLESS(601),
+	QUEEN_OF_CAT_GIFT(602),
+	UNICORN_SERAPHIM_BLESS(603),
+	UNICORN_SERAPHIM_GIFT(604),
     STRAWBERRY_FRUIT(-1),
     MONGO_FRUIT(-1),
     CHERRY_FRUIT(-1),
@@ -525,7 +515,35 @@ public enum AbnormalType {
     HERB_SPEED(-1),
     HERB_ACCURANCY(-1),
     WARRIOR_BANE(-1),
-    MAGE_BANE(-1);
+	MAGE_BANE(-1),
+	DRAGON_FRUIT(-1),
+	EXP_SP_A(-1),
+	EXP_SP_B(-1),
+	EXP_SP_C(-1),
+	EXP_SP_D(-1),
+	EXP_SP_E(-1),
+	EXP_SP_F(-1),
+	EXP_SP_G(-1),
+	EXP_SP_H(-1),
+	EXP_SP_I(-1),
+	EXP_SP_J(-1),
+	EXP_SP_K(-1),
+	EXP_SP_L(-1),
+	EXP_SP_M(-1),
+	EXP_SP_N(-1),
+	EXP_SP_O(-1),
+	EXP_SP_P(-1),
+	EXP_SP_Q(-1),
+	EXP_SP_R(-1),
+	EXP_SP_S(-1),
+	EXP_SP_T(-1),
+	EXP_SP_U(-1),
+	EXP_SP_V(-1),
+	EXP_SP_W(-1),
+	EXP_SP_X(-1),
+	EXP_ELEMENTAL(-1),
+	ISHKA_EFFECT(-1),
+	TRANSFORM_EFFECT(-1);
 
     protected static final Logger LOGGER = LoggerFactory.getLogger(AbnormalType.class);
     private int _clientId;

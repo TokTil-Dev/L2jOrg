@@ -1,9 +1,20 @@
 package org.l2j.gameserver.data.database.dao;
 
+import io.github.joealisson.primitive.ConcurrentIntMap;
+import io.github.joealisson.primitive.IntMap;
 import org.l2j.commons.database.DAO;
 import org.l2j.commons.database.annotation.Query;
+import org.l2j.gameserver.data.database.data.*;
+import org.l2j.gameserver.model.ClanWar;
 
-public interface ClanDAO extends DAO<Object> {
+import java.sql.ResultSet;
+import java.util.List;
+import java.util.function.Consumer;
+
+/**
+ * @author JoeAlisson
+ */
+public interface ClanDAO extends DAO<ClanData> {
 
     @Query("DELETE FROM clan_data WHERE clan_data.clan_id NOT IN (SELECT clanid FROM characters)")
     int deleteWithoutMembers();
@@ -16,4 +27,113 @@ public interface ClanDAO extends DAO<Object> {
 
     @Query("UPDATE clan_subpledges SET leader_id=0 WHERE clan_subpledges.leader_id NOT IN (SELECT charId FROM characters) AND leader_id > 0;")
     void resetSubpledgeLeaderWithoutCharacter();
+
+    @Query("SELECT clan_id FROM clan_data WHERE hasCastle = :castleId:")
+    int findOwnerClanIdByCastle(int castleId);
+
+    @Query("UPDATE clan_data SET hasCastle = 0 WHERE hasCastle = :castleId:")
+    void removeOwnerClanByCastle(int castleId);
+
+    @Query("UPDATE clan_data SET hasCastle = :castleId: WHERE clan_id = :id:")
+    void updateOwnedCastle(int id, int castleId);
+
+    @Query("DELETE FROM clan_wars WHERE (clan1=:clan1: AND clan2=:clan2:) OR (clan1=:clan2: AND clan2=:clan1:)")
+    void deleteClanWar(int clan1, int clan2);
+
+    @Query("""
+            SELECT c.clan_name, c.ally_name
+            FROM clan_wars w
+            INNER JOIN clan_data c ON c.clan_id = w.clan2
+            WHERE w.clan1 = :clanId: AND
+                w.clan2 NOT IN ( SELECT clan1 FROM clan_wars WHERE clan2 = :clanId:)
+            """)
+    List<ClanData> findAttackList(int clanId);
+
+    @Query("""
+            SELECT c.clan_name, c.ally_name
+            FROM clan_wars w
+            INNER JOIN clan_data c ON c.clan_id = w.clan1
+            WHERE w.clan2 = :clanId: AND
+                w.clan1 NOT IN ( SELECT clan2 FROM clan_wars WHERE clan1 = :clanId:)
+            """)
+    List<ClanData> findUnderAttackList(int clanId);
+
+    @Query("""
+            SELECT c.clan_name, c.ally_name
+            FROM clan_wars w
+            INNER JOIN clan_data c ON c.clan_id = w.clan2
+            WHERE w.clan1 = :clanId: AND
+                w.clan2 IN ( SELECT clan1 FROM clan_wars WHERE clan2 = :clanId:)
+            """)
+    List<ClanData> findWarList(int clanId);
+
+    @Query("SELECT * FROM clan_data")
+    List<ClanData> findAll();
+
+    @Query("SELECT enabled, notice FROM clan_notices WHERE clan_id=:id:")
+    void withNoticesDo(int id, Consumer<ResultSet> action);
+
+    @Query("REPLACE INTO clan_notices (clan_id, notice, enabled) values (:id:,:notice:,:enabled:)")
+    void saveNotice(int id, String notice, boolean enabled);
+
+    @Query("SELECT skill_id, skill_level, sub_pledge_id FROM clan_skills WHERE clan_id=:id:")
+    List<ClanSkillData> findSkillsByClan(int id);
+
+    @Query("UPDATE clan_skills SET skill_level= :level: WHERE skill_id=:skillId: AND clan_id=:id:")
+    void updateClanSkill(int id, int skillId, int level);
+
+    @Query("REPLACE INTO clan_skills (clan_id,skill_id,skill_level ,sub_pledge_id) VALUES (:id:, :skillId:, :level:, :subType:)")
+    void saveClanSkill(int id, int skillId, int level, int subType);
+
+    @Query("SELECT sub_pledge_id, name, leader_id FROM clan_subpledges WHERE clan_id=:id:")
+    ConcurrentIntMap<SubPledgeData> findClanSubPledges(int id);
+
+    void save(SubPledgeData subPledgeData);
+
+    @Query("SELECT privs,`rank` FROM clan_privs WHERE clan_id=:id:")
+    void withClanPrivs(int id, Consumer<ResultSet> action);
+
+    @Query("REPLACE INTO clan_privs (clan_id,`rank`, privs) VALUES (:id:,:rank:,:privs:)")
+    void saveClanPrivs(int id, int rank, int privs);
+
+    @Query("UPDATE clan_data SET clan_level = :level: WHERE clan_id = :id:")
+    void updateClanLevel(int id, int level);
+
+    @Query("UPDATE clan_data SET crest_id = :crestId: WHERE clan_id = :id:")
+    void updateClanCrest(int id, int crestId);
+
+    @Query("UPDATE clan_data SET ally_crest_id = :crestId: WHERE ally_id = :allyId:")
+    void updateAllyCrestByAlly(int allyId, int crestId);
+
+    @Query("UPDATE clan_data SET ally_crest_id = :crestId: WHERE clan_id = :id:")
+    void updateAllyCrest(int id, int crestId);
+
+    @Query("UPDATE clan_data SET crest_large_id = :crestId: WHERE clan_id = :id:")
+    void updateClanCrestLarge(int id, int crestId);
+
+    @Query("""
+            DELETE FROM crests WHERE id NOT IN (
+                SELECT crest_id AS id FROM clan_data
+                UNION ALL
+                SELECT ally_crest_id AS id FROM clan_data
+                UNION ALL
+                SELECT crest_large_id AS id FROM clan_data)
+            """)
+    void removeUnusedCrests();
+
+    @Query("SELECT * FROM crests")
+    IntMap<CrestData> findAllCrests();
+
+    void save(CrestData crest);
+
+    @Query("DELETE FROM crests where id = :crestId:")
+    void deleteCrest(int crestId);
+
+    @Query("DELETE FROM clan_data WHERE clan_id = :clanId:")
+    void deleteClan(int clanId);
+
+    @Query("SELECT * FROM clan_wars")
+    List<ClanWarData> findAllWars();
+
+    void save(ClanWarData war);
 }

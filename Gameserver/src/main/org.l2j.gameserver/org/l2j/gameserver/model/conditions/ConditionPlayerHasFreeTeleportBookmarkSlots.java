@@ -19,7 +19,7 @@ package org.l2j.gameserver.model.conditions;
 import org.l2j.gameserver.model.actor.Creature;
 import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.model.items.ItemTemplate;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.network.SystemMessageId;
 
 /**
@@ -39,7 +39,7 @@ public class ConditionPlayerHasFreeTeleportBookmarkSlots extends Condition {
             return false;
         }
 
-        if ((player.getBookMarkSlot() + _teleportBookmarkSlots) > 9) {
+        if ((player.getBookMarkSlot() + _teleportBookmarkSlots) > 18) {
             player.sendPacket(SystemMessageId.YOUR_NUMBER_OF_MY_TELEPORTS_SLOTS_HAS_REACHED_ITS_MAXIMUM_LIMIT);
             return false;
         }

@@ -19,7 +19,7 @@ package custom.listeners;
 import ai.AbstractNpcAI;
 import org.l2j.commons.util.Rnd;
 import org.l2j.gameserver.model.actor.Attackable;
-import org.l2j.gameserver.model.events.Containers;
+import org.l2j.gameserver.model.events.Listeners;
 import org.l2j.gameserver.model.events.EventType;
 import org.l2j.gameserver.model.events.ListenerRegisterType;
 import org.l2j.gameserver.model.events.annotations.*;
@@ -57,7 +57,7 @@ public class ListenerTest extends AbstractNpcAI
 		setAttackableAttackId(this::onAttackableAttack, ELPIES);
 		
 		// Manual listener registration
-		Containers.Global().addListener(new ConsumerEventListener(Containers.Global(), EventType.ON_PLAYER_DLG_ANSWER, (OnPlayerDlgAnswer event) ->
+		Listeners.Global().addListener(new ConsumerEventListener(Listeners.Global(), EventType.ON_PLAYER_DLG_ANSWER, (OnPlayerDlgAnswer event) ->
 		{
 			LOGGER.info(getClass().getSimpleName() + ": " + event.getActiveChar() + " OnPlayerDlgAnswer: Answer: " + event.getAnswer() + " MessageId: " + event.getMessageId());
 		}, this));
@@ -96,7 +96,7 @@ public class ListenerTest extends AbstractNpcAI
 	@Range(from = 1, to = 9)
 	private void onSiegeStart(OnCastleSiegeStart event)
 	{
-		LOGGER.info(getClass().getSimpleName() + ": The siege of " + event.getSiege().getCastle().getName() + " (" + event.getSiege().getCastle().getResidenceId() + ") has started!");
+		LOGGER.info(getClass().getSimpleName() + ": The siege of " + event.getSiege().getCastle().getName() + " (" + event.getSiege().getCastle().getId() + ") has started!");
 	}
 	
 	/**
@@ -147,7 +147,7 @@ public class ListenerTest extends AbstractNpcAI
 	@RegisterType(ListenerRegisterType.GLOBAL_PLAYERS)
 	public void OnPlayerLogin(OnPlayerLogin event)
 	{
-		LOGGER.info(getClass().getSimpleName() + ": Player: " + event.getActiveChar() + " has logged in!");
+		LOGGER.info(getClass().getSimpleName() + ": Player: " + event.getPlayer() + " has logged in!");
 	}
 	
 	/**

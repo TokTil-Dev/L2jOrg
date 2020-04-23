@@ -2,8 +2,9 @@ package org.l2j.gameserver.data.xml.impl;
 
 import org.l2j.commons.util.CommonUtil;
 import org.l2j.gameserver.Config;
-import org.l2j.gameserver.datatables.ItemTable;
-import org.l2j.gameserver.engine.elemental.api.ElementalType;
+import org.l2j.gameserver.engine.item.ItemEngine;
+import org.l2j.gameserver.api.elemental.ElementalType;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
 import org.l2j.gameserver.enums.AISkillScope;
 import org.l2j.gameserver.enums.DropType;
 import org.l2j.gameserver.enums.MpRewardAffectType;
@@ -12,7 +13,7 @@ import org.l2j.gameserver.model.StatsSet;
 import org.l2j.gameserver.model.actor.templates.NpcTemplate;
 import org.l2j.gameserver.model.effects.EffectType;
 import org.l2j.gameserver.model.holders.DropHolder;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.settings.ServerSettings;
 import org.l2j.gameserver.util.GameXmlReader;
 import org.slf4j.Logger;
@@ -277,7 +278,7 @@ public class NpcData extends GameXmlReader {
                                             attrs = skillListNode.getAttributes();
                                             final int skillId = parseInteger(attrs, "id");
                                             final int skillLevel = parseInteger(attrs, "level");
-                                            final Skill skill = SkillData.getInstance().getSkill(skillId, skillLevel);
+                                            final Skill skill = SkillEngine.getInstance().getSkill(skillId, skillLevel);
                                             if (skill != null) {
                                                 skills.put(skill.getId(), skill);
                                             } else {
@@ -371,7 +372,7 @@ public class NpcData extends GameXmlReader {
                                                 if ("item".equals(drop_node.getNodeName().toLowerCase())) {
                                                     final double chance = parseDouble(drop_attrs, "chance");
                                                     final DropHolder dropItem = new DropHolder(dropType, parseInteger(drop_attrs, "id"), parseLong(drop_attrs, "min"), parseLong(drop_attrs, "max"), dropType == DropType.LUCKY ? chance / 100 : chance);
-                                                    if (ItemTable.getInstance().getTemplate(parseInteger(drop_attrs, "id")) == null) {
+                                                    if (ItemEngine.getInstance().getTemplate(parseInteger(drop_attrs, "id")) == null) {
                                                         LOGGER.warn("DropListItem: Could not find item with id " + parseInteger(drop_attrs, "id") + ".");
                                                     } else {
                                                         dropLists.add(dropItem);
@@ -450,26 +451,26 @@ public class NpcData extends GameXmlReader {
                                                 aiSkillScopes.add(AISkillScope.COT);
                                                 aiSkillScopes.add(shortOrLongRangeScope);
                                             }
-                                        } else if (skill.hasEffectType(EffectType.DISPEL, EffectType.DISPEL_BY_SLOT)) {
+                                        } else if (skill.hasAnyEffectType(EffectType.DISPEL, EffectType.DISPEL_BY_SLOT)) {
                                             aiSkillScopes.add(AISkillScope.NEGATIVE);
                                             aiSkillScopes.add(shortOrLongRangeScope);
-                                        } else if (skill.hasEffectType(EffectType.HEAL)) {
+                                        } else if (skill.hasAnyEffectType(EffectType.HEAL)) {
                                             aiSkillScopes.add(AISkillScope.HEAL);
-                                        } else if (skill.hasEffectType(EffectType.PHYSICAL_ATTACK, EffectType.PHYSICAL_ATTACK_HP_LINK, EffectType.MAGICAL_ATTACK, EffectType.DEATH_LINK, EffectType.HP_DRAIN)) {
+                                        } else if (skill.hasAnyEffectType(EffectType.PHYSICAL_ATTACK, EffectType.PHYSICAL_ATTACK_HP_LINK, EffectType.MAGICAL_ATTACK, EffectType.DEATH_LINK, EffectType.HP_DRAIN)) {
                                             aiSkillScopes.add(AISkillScope.ATTACK);
                                             aiSkillScopes.add(AISkillScope.UNIVERSAL);
                                             aiSkillScopes.add(shortOrLongRangeScope);
-                                        } else if (skill.hasEffectType(EffectType.SLEEP)) {
+                                        } else if (skill.hasAnyEffectType(EffectType.SLEEP)) {
                                             aiSkillScopes.add(AISkillScope.IMMOBILIZE);
-                                        } else if (skill.hasEffectType(EffectType.BLOCK_ACTIONS, EffectType.ROOT)) {
+                                        } else if (skill.hasAnyEffectType(EffectType.BLOCK_ACTIONS, EffectType.ROOT)) {
                                             aiSkillScopes.add(AISkillScope.IMMOBILIZE);
                                             aiSkillScopes.add(shortOrLongRangeScope);
-                                        } else if (skill.hasEffectType(EffectType.MUTE, EffectType.BLOCK_CONTROL)) {
+                                        } else if (skill.hasAnyEffectType(EffectType.MUTE, EffectType.BLOCK_CONTROL)) {
                                             aiSkillScopes.add(AISkillScope.COT);
                                             aiSkillScopes.add(shortOrLongRangeScope);
-                                        } else if (skill.hasEffectType(EffectType.DMG_OVER_TIME, EffectType.DMG_OVER_TIME_PERCENT)) {
+                                        } else if (skill.hasAnyEffectType(EffectType.DMG_OVER_TIME, EffectType.DMG_OVER_TIME_PERCENT)) {
                                             aiSkillScopes.add(shortOrLongRangeScope);
-                                        } else if (skill.hasEffectType(EffectType.RESURRECTION)) {
+                                        } else if (skill.hasAnyEffectType(EffectType.RESURRECTION)) {
                                             aiSkillScopes.add(AISkillScope.RES);
                                         } else {
                                             aiSkillScopes.add(AISkillScope.UNIVERSAL);
@@ -617,7 +618,7 @@ public class NpcData extends GameXmlReader {
      * @return the template list for the given level.
      */
     public List<NpcTemplate> getAllMonstersOfLevel(int... lvls) {
-        return getTemplates(template -> contains(lvls, template.getLevel()) && template.isType("L2Monster"));
+        return getTemplates(template -> contains(lvls, template.getLevel()) && template.isType("Monster"));
     }
 
     /**

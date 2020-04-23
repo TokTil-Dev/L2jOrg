@@ -1,13 +1,13 @@
 package org.l2j.gameserver.network.clientpackets;
 
-import org.l2j.gameserver.data.xml.impl.SkillData;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
 import org.l2j.gameserver.data.xml.impl.SkillTreesData;
 import org.l2j.gameserver.model.ClanPrivilege;
 import org.l2j.gameserver.model.SkillLearn;
 import org.l2j.gameserver.model.actor.Npc;
 import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.model.base.AcquireSkillType;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.network.serverpackets.AcquireSkillInfo;
 import org.l2j.gameserver.network.serverpackets.ExAcquireSkillInfo;
 import org.slf4j.Logger;
@@ -50,20 +50,10 @@ public final class RequestAcquireSkillInfo extends ClientPacket {
             return;
         }
 
-        final Skill skill = SkillData.getInstance().getSkill(_id, _level);
+        final Skill skill = SkillEngine.getInstance().getSkill(_id, _level);
         if (skill == null) {
             LOGGER.warn("Skill Id: " + _id + " level: " + _level + " is undefined. " + RequestAcquireSkillInfo.class.getName() + " failed.");
             return;
-        }
-
-        // Hack check. Doesn't apply to all Skill Types
-        final int prevSkillLevel = activeChar.getSkillLevel(_id);
-        if ((prevSkillLevel > 0) && !((_skillType == AcquireSkillType.SUBPLEDGE))) {
-            if (prevSkillLevel == _level) {
-                LOGGER.warn(RequestAcquireSkillInfo.class.getSimpleName() + ": Player " + activeChar.getName() + " is requesting info for a skill that already knows, Id: " + _id + " level: " + _level + "!");
-            } else if (prevSkillLevel != (_level - 1)) {
-                LOGGER.warn(RequestAcquireSkillInfo.class.getSimpleName() + ": Player " + activeChar.getName() + " is requesting info for skill Id: " + _id + " level " + _level + " without knowing it's previous level!");
-            }
         }
 
         final SkillLearn s = SkillTreesData.getInstance().getSkillLearn(_skillType, _id, _level, activeChar);
@@ -72,28 +62,19 @@ public final class RequestAcquireSkillInfo extends ClientPacket {
         }
 
         switch (_skillType) {
-            case TRANSFORM:
-            case FISHING: {
-                client.sendPacket(new AcquireSkillInfo(_skillType, s));
-                break;
-            }
-            case CLASS: {
-                client.sendPacket(new ExAcquireSkillInfo(activeChar, s));
-                break;
-            }
-            case PLEDGE: {
+            case TRANSFORM, FISHING -> client.sendPacket(new AcquireSkillInfo(_skillType, s));
+            case CLASS -> client.sendPacket(new ExAcquireSkillInfo(activeChar, s));
+            case PLEDGE -> {
                 if (!activeChar.isClanLeader()) {
                     return;
                 }
                 client.sendPacket(new AcquireSkillInfo(_skillType, s));
-                break;
             }
-            case SUBPLEDGE: {
+            case SUBPLEDGE -> {
                 if (!activeChar.isClanLeader() || !activeChar.hasClanPrivilege(ClanPrivilege.CL_TROOPS_FAME)) {
                     return;
                 }
                 client.sendPacket(new AcquireSkillInfo(_skillType, s));
-                break;
             }
         }
     }

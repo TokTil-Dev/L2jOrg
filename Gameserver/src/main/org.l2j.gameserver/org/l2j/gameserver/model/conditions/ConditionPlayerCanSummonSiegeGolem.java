@@ -23,7 +23,7 @@ import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.model.entity.Castle;
 import org.l2j.gameserver.model.entity.Fort;
 import org.l2j.gameserver.model.items.ItemTemplate;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.network.SystemMessageId;
 
 import static org.l2j.gameserver.util.GameUtils.isPlayer;
@@ -58,7 +58,7 @@ public class ConditionPlayerCanSummonSiegeGolem extends Condition {
             canSummonSiegeGolem = false;
         }
 
-        if (((fort != null) && (fort.getResidenceId() == 0)) || ((castle != null) && (castle.getResidenceId() == 0))) {
+        if (((fort != null) && (fort.getId() == 0)) || ((castle != null) && (castle.getId() == 0))) {
             player.sendPacket(SystemMessageId.INVALID_TARGET);
             canSummonSiegeGolem = false;
         } else if (((castle != null) && !castle.getSiege().isInProgress()) || ((fort != null) && !fort.getSiege().isInProgress())) {

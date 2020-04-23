@@ -1,23 +1,7 @@
-/*
- * This file is part of the L2J Mobius project.
- * 
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
 package handlers.admincommandhandlers;
 
-import org.l2j.commons.database.DatabaseFactory;
 import org.l2j.gameserver.Config;
+import org.l2j.gameserver.data.database.dao.PlayerDAO;
 import org.l2j.gameserver.data.sql.impl.PlayerNameTable;
 import org.l2j.gameserver.data.xml.impl.ClassListData;
 import org.l2j.gameserver.enums.SubclassInfoType;
@@ -31,23 +15,23 @@ import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.model.base.ClassId;
 import org.l2j.gameserver.model.html.PageBuilder;
 import org.l2j.gameserver.model.html.PageResult;
-import org.l2j.gameserver.model.stats.Stats;
+import org.l2j.gameserver.model.stats.Stat;
 import org.l2j.gameserver.network.GameClient;
 import org.l2j.gameserver.network.SystemMessageId;
 import org.l2j.gameserver.network.serverpackets.*;
 import org.l2j.gameserver.network.serverpackets.html.NpcHtmlMessage;
+import org.l2j.gameserver.settings.GeneralSettings;
 import org.l2j.gameserver.util.BuilderUtil;
 import org.l2j.gameserver.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.util.*;
 
+import static org.l2j.commons.configuration.Configurator.getSettings;
+import static org.l2j.commons.database.DatabaseAccess.getDAO;
 import static org.l2j.gameserver.network.SystemMessageId.YOUR_TITLE_HAS_BEEN_CHANGED;
 import static org.l2j.gameserver.util.GameUtils.*;
-
 
 /**
  * EditChar admin command implementation.
@@ -321,13 +305,11 @@ public class AdminEditChar implements IAdminCommandHandler
 				final String val = command.substring(10);
 				final int recVal = Integer.parseInt(val);
 				final WorldObject target = activeChar.getTarget();
-				if ((target != null) && isPlayer(target))
+				if (isPlayer(target))
 				{
 					final Player player = (Player) target;
 					player.setRecomHave(recVal);
 					player.broadcastUserInfo();
-					player.sendPacket(new UserInfo(player));
-					player.sendPacket(new ExVoteSystemInfo(player));
 					player.sendMessage("A GM changed your Recommend points to " + recVal);
 					activeChar.sendMessage(player.getName() + "'s Recommend changed to " + recVal);
 				}
@@ -428,13 +410,13 @@ public class AdminEditChar implements IAdminCommandHandler
 				{
 					return false;
 				}
-				if (PlayerNameTable.getInstance().getIdByName(val) > 0)
+				if (PlayerNameTable.getInstance().doesCharNameExist(val))
 				{
 					BuilderUtil.sendSysMessage(activeChar, "Warning, player " + val + " already exists");
 					return false;
 				}
 				player.setName(val);
-				if (Config.CACHE_CHAR_NAMES)
+				if (getSettings(GeneralSettings.class).cachePlayersName())
 				{
 					PlayerNameTable.getInstance().addName(player);
 				}
@@ -479,7 +461,7 @@ public class AdminEditChar implements IAdminCommandHandler
 			{
 				return false;
 			}
-			player.getAppearance().setSex(player.getAppearance().isFemale() ? false : true);
+			player.getAppearance().setFemale(player.getAppearance().isFemale() ? false : true);
 			player.sendMessage("Your gender has been changed by a GM");
 			player.broadcastUserInfo();
 		}
@@ -564,13 +546,8 @@ public class AdminEditChar implements IAdminCommandHandler
 				Player player = null;
 				player = World.getInstance().findPlayer(playerName);
 				
-				if (player == null)
-				{
-					final Connection con = DatabaseFactory.getInstance().getConnection();
-					final PreparedStatement ps = con.prepareStatement("UPDATE characters SET " + (changeCreateExpiryTime ? "clan_create_expiry_time" : "clan_join_expiry_time") + " WHERE char_name=? LIMIT 1");
-					
-					ps.setString(1, playerName);
-					ps.execute();
+				if (player == null) {
+					getDAO(PlayerDAO.class).removeClanPenalty(playerName);
 				}
 				else if (changeCreateExpiryTime) // removing penalty
 				{
@@ -710,15 +687,15 @@ public class AdminEditChar implements IAdminCommandHandler
 				{
 					final String val = command.substring(20);
 					final int level = Integer.parseInt(val);
-					final long oldexp = pet.getStat().getExp();
-					final long newexp = pet.getStat().getExpForLevel(level);
+					final long oldexp = pet.getStats().getExp();
+					final long newexp = pet.getStats().getExpForLevel(level);
 					if (oldexp > newexp)
 					{
-						pet.getStat().removeExp(oldexp - newexp);
+						pet.getStats().removeExp(oldexp - newexp);
 					}
 					else if (oldexp < newexp)
 					{
-						pet.getStat().addExp(newexp - oldexp);
+						pet.getStats().addExp(newexp - oldexp);
 					}
 				}
 				catch (Exception e)
@@ -903,29 +880,15 @@ public class AdminEditChar implements IAdminCommandHandler
 				return false;
 			}
 			
-			try
-			{
-				Stats stat = null;
-				for (Stats stats : Stats.values())
-				{
-					if (statName.equalsIgnoreCase(stats.name()) || statName.equalsIgnoreCase(stats.getValue()))
-					{
-						stat = stats;
-						break;
-					}
-				}
-				if (stat == null)
-				{
-					BuilderUtil.sendSysMessage(activeChar, "Couldn't find such stat!");
-					return false;
-				}
+			try {
+				Stat stat = Stat.valueOf(statName);
 				
 				final double value = Double.parseDouble(st.nextToken());
 				final Creature targetCreature = (Creature) target;
 				if (value >= 0)
 				{
-					targetCreature.getStat().addFixedValue(stat, value);
-					targetCreature.getStat().recalculateStats(true);
+					targetCreature.getStats().addFixedValue(stat, value);
+					targetCreature.getStats().recalculateStats(true);
 					BuilderUtil.sendSysMessage(activeChar, "Fixed stat: " + stat + " has been set to " + value);
 				}
 				else
@@ -933,8 +896,8 @@ public class AdminEditChar implements IAdminCommandHandler
 					BuilderUtil.sendSysMessage(activeChar, "Non negative values are only allowed!");
 				}
 			}
-			catch (Exception e)
-			{
+			catch (Exception e) {
+				BuilderUtil.sendSysMessage(activeChar, "Couldn't find such stat!");
 				BuilderUtil.sendSysMessage(activeChar, "Syntax: //setparam <stat> <value>");
 				return false;
 			}
@@ -955,26 +918,17 @@ public class AdminEditChar implements IAdminCommandHandler
 				return false;
 			}
 			final String statName = st.nextToken();
-			
-			Stats stat = null;
-			for (Stats stats : Stats.values())
-			{
-				if (statName.equalsIgnoreCase(stats.name()) || statName.equalsIgnoreCase(stats.getValue()))
-				{
-					stat = stats;
-					break;
-				}
-			}
-			if (stat == null)
-			{
+
+			try {
+				Stat stat = Stat.valueOf(statName);
+				final Creature targetCreature = (Creature) target;
+				targetCreature.getStats().removeFixedValue(stat);
+				targetCreature.getStats().recalculateStats(true);
+				BuilderUtil.sendSysMessage(activeChar, "Fixed stat: " + stat + " has been removed.");
+			} catch (Exception e) {
 				BuilderUtil.sendSysMessage(activeChar, "Couldn't find such stat!");
 				return false;
 			}
-			
-			final Creature targetCreature = (Creature) target;
-			targetCreature.getStat().removeFixedValue(stat);
-			targetCreature.getStat().recalculateStats(true);
-			BuilderUtil.sendSysMessage(activeChar, "Fixed stat: " + stat + " has been removed.");
 		}
 		return true;
 	}
@@ -1073,7 +1027,7 @@ public class AdminEditChar implements IAdminCommandHandler
 		adminReply.replace("%xp%", String.valueOf(player.getExp()));
 		adminReply.replace("%sp%", String.valueOf(player.getSp()));
 		adminReply.replace("%class%", ClassListData.getInstance().getClass(player.getClassId()).getClientCode());
-		adminReply.replace("%ordinal%", String.valueOf(player.getClassId().ordinal()));
+		adminReply.replace("%ordinal%", String.valueOf(player.getClassId().getId()));
 		adminReply.replace("%classid%", String.valueOf(player.getClassId()));
 		adminReply.replace("%baseclass%", ClassListData.getInstance().getClass(player.getBaseClass()).getClientCode());
 		adminReply.replace("%x%", String.valueOf(player.getX()));
@@ -1540,13 +1494,13 @@ public class AdminEditChar implements IAdminCommandHandler
 		final String name = target.getName();
 		html.replace("%name%", name == null ? "N/A" : name);
 		html.replace("%level%", Integer.toString(target.getLevel()));
-		html.replace("%exp%", Long.toString(target.getStat().getExp()));
+		html.replace("%exp%", Long.toString(target.getStats().getExp()));
 		final String owner = target.getActingPlayer().getName();
 		html.replace("%owner%", " <a action=\"bypass -h admin_character_info " + owner + "\">" + owner + "</a>");
 		html.replace("%class%", target.getClass().getSimpleName());
 		html.replace("%ai%", target.hasAI() ? target.getAI().getIntention().name() : "NULL");
-		html.replace("%hp%", (int) target.getStatus().getCurrentHp() + "/" + target.getStat().getMaxHp());
-		html.replace("%mp%", (int) target.getStatus().getCurrentMp() + "/" + target.getStat().getMaxMp());
+		html.replace("%hp%", (int) target.getStatus().getCurrentHp() + "/" + target.getStats().getMaxHp());
+		html.replace("%mp%", (int) target.getStatus().getCurrentMp() + "/" + target.getStats().getMaxMp());
 		html.replace("%karma%", Integer.toString(target.getReputation()));
 		html.replace("%race%", target.getTemplate().getRace().toString());
 		if (isPet(target))

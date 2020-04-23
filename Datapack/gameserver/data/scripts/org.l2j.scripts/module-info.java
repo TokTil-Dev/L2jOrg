@@ -2,17 +2,30 @@ import handlers.actionhandlers.*;
 import handlers.actionshifthandlers.*;
 import handlers.admincommandhandlers.AdminCoins;
 import handlers.bypasshandlers.EquipmentUpgrade;
-import quests.Q10960_Tutorial.Q10960_Tutorial;
+import handlers.conditions.CategoryTypeCondition;
+import handlers.conditions.NpcLevelCondition;
+import handlers.conditions.PlayerLevelCondition;
+import handlers.effecthandlers.*;
+import handlers.effecthandlers.stat.*;
+import handlers.itemhandlers.TransformationBook;
+import handlers.skillconditionhandlers.*;
+import quests.tutorial.Q10960_Tutorial.Q10960_Tutorial;
+import quests.tutorial.Q201_Tutorial.Q201_Tutorial;
+import quests.tutorial.Q202_Tutorial.Q202_Tutorial;
+import quests.tutorial.Q203_Tutorial.Q203_Tutorial;
+import quests.tutorial.Q204_Tutorial.Q204_Tutorial;
+import quests.tutorial.Q205_Tutorial.Q205_Tutorial;
+import quests.tutorial.Q206_Tutorial.Q206_Tutorial;
 
 open module org.l2j.scripts {
 
-    requires java.logging;
-    requires org.l2j.gameserver;
-    requires org.l2j.commons;
-    requires java.sql;
     requires java.desktop;
-    requires org.slf4j;
+    requires java.logging;
+    requires java.sql;
     requires io.github.joealisson.primitive;
+    requires org.l2j.commons;
+    requires org.l2j.gameserver;
+    requires org.slf4j;
 
     uses instances.AbstractInstance;
     uses events.ScriptEvent;
@@ -32,9 +45,264 @@ open module org.l2j.scripts {
     uses org.l2j.gameserver.handler.IAffectScopeHandler;
     uses org.l2j.gameserver.handler.IPlayerActionHandler;
     uses org.l2j.gameserver.model.quest.Quest;
+    uses org.l2j.gameserver.engine.skill.api.SkillConditionFactory;
+    uses org.l2j.gameserver.engine.skill.api.SkillEffectFactory;
+    uses org.l2j.gameserver.model.conditions.ConditionFactory;
+
+    provides org.l2j.gameserver.model.conditions.ConditionFactory
+            with NpcLevelCondition.Factory,
+                CategoryTypeCondition.Factory,
+                PlayerLevelCondition.Factory
+            ;
+
+    provides org.l2j.gameserver.engine.skill.api.SkillEffectFactory
+            with AbnormalShield.Factory,
+                AcquireCostume.Factory,
+                AcquireRandomCostume.Factory,
+                AddHate.Factory,
+                AddHuntingTime.Factory,
+                AddTeleportBookmarkSlot.Factory,
+                StatModify.Factory,
+                AttackTrait.Factory,
+                Backstab.Factory,
+                BaseStatsModify.Factory,
+                Betray.Factory,
+                BlockAbnormalSlot.Factory,
+                BlockAction.Factory,
+                BlockActions.Factory,
+                BlockChat.Factory,
+                BlockControl.Factory,
+                BlockEscape.Factory,
+                BlockMove.Factory,
+                BlockParty.Factory,
+                BlockResurrection.Factory,
+                BlockSkill.Factory,
+                BlockTarget.Factory,
+                Bluff.Factory,
+                BuffBlock.Factory,
+                CallParty.Factory,
+                CallPc.Factory,
+                CallSkill.Factory,
+                CheapShot.Factory,
+                ChameleonRest.Factory,
+                ChangeFace.Factory,
+                ChangeHairColor.Factory,
+                ChangeHairStyle.Factory,
+                Confuse.Factory,
+                ConsumeBody.Factory,
+                ConvertItem.Factory,
+                Cp.Factory,
+                CpHeal.Factory,
+                CpHealPercent.Factory,
+                StatPositionBased.Factory,
+                StatHpBased.Factory,
+                DamageBlock.Factory,
+                DamageByAttack.Factory,
+                DamOverTime.Factory,
+                DeathLink.Factory,
+                DebuffBlock.Factory,
+                DefenceTrait.Factory,
+                DeleteHate.Factory,
+                DeleteHateOfMe.Factory,
+                Detection.Factory,
+                DisableTargeting.Factory,
+                Disarm.Factory,
+                DispelAll.Factory,
+                DispelByCategory.Factory,
+                DispelBySlot.Factory,
+                DispelBySlotMyself.Factory,
+                DispelBySlotProbability.Factory,
+                EnergyAttack.Factory,
+                EnlargeAbnormalSlot.Factory,
+                EnlargeSlot.Factory,
+                Escape.Factory,
+                FakeDeath.Factory,
+                FatalBlow.Factory,
+                Fear.Factory,
+                Feed.Factory,
+                Flag.Factory,
+                FocusMomentum.Factory,
+                FocusMaxMomentum.Factory,
+                FocusSouls.Factory,
+                GetAgro.Factory,
+                GiveClanReputation.Factory,
+                GiveSp.Factory,
+                GiveXp.Factory,
+                GiveExpAndSp.Factory,
+                Grow.Factory,
+                HairAccessorySet.Factory,
+                HeadquarterCreate.Factory,
+                Heal.Factory,
+                HealOverTime.Factory,
+                HealPercent.Factory,
+                Hide.Factory,
+                Hp.Factory,
+                HpByLevel.Factory,
+                HpCpHeal.Factory,
+                HpDrain.Factory,
+                IgnoreDeath.Factory,
+                ImmobilePetBuff.Factory,
+                KnockBack.Factory,
+                Lethal.Factory,
+                Lucky.Factory,
+                MagicalAttack.Factory,
+                MagicalAttackByAbnormal.Factory,
+                MagicalAttackByAbnormalSlot.Factory,
+                MagicalAttackMp.Factory,
+                MagicalAttackRange.Factory,
+                MagicalSoulAttack.Factory,
+                MagicMpCost.Factory,
+                ManaDamOverTime.Factory,
+                ManaHeal.Factory,
+                ManaHealByLevel.Factory,
+                ManaHealOverTime.Factory,
+                ManaHealPercent.Factory,
+                VitalStatModify.Factory,
+                ModifyVital.Factory,
+                Mp.Factory,
+                MpConsumePerLevel.Factory,
+                Mute.Factory,
+                NoblesseBless.Factory,
+                ObtainSoul.Factory,
+                OpenChest.Factory,
+                OpenCommonRecipeBook.Factory,
+                OpenDoor.Factory,
+                OpenDwarfRecipeBook.Factory,
+                Passive.Factory,
+                PhysicalAttack.Factory,
+                PhysicalAttackHpLink.Factory,
+                PhysicalAttackMute.Factory,
+                PhysicalMute.Factory,
+                PhysicalShieldAngleAll.Factory,
+                PhysicalSoulAttack.Factory,
+                PkCount.Factory,
+                PolearmSingleTarget.Factory,
+                ProtectionBlessing.Factory,
+                PullBack.Factory,
+                RandomizeHate.Factory,
+                RealDamage.Factory,
+                RebalanceHP.Factory,
+                ReduceDamage.Factory,
+                ReduceDropPenalty.Factory,
+                Relax.Factory,
+                ResistAbnormalByCategory.Factory,
+                ResistDispelByCategory.Factory,
+                Restoration.Factory,
+                RestorationRandom.Factory,
+                Resurrection.Factory,
+                ResurrectionSpecial.Factory,
+                Reuse.Factory,
+                ReuseSkillById.Factory,
+                Root.Factory,
+                SendSystemMessageToClan.Factory,
+                ServitorShare.Factory,
+                SilentMove.Factory,
+                SkillCritical.Factory,
+                SkillEvasion.Factory,
+                SkillTurning.Factory,
+                SoulBlow.Factory,
+                SoulEating.Factory,
+                Speed.Factory,
+                Spoil.Factory,
+                StatByMoveType.Factory,
+                StatUp.Factory,
+                StatsLinkedEffect.Factory,
+                StealAbnormal.Factory,
+                Summon.Factory,
+                SummonAgathion.Factory,
+                SummonCubic.Factory,
+                SummonNpc.Factory,
+                SummonPet.Factory,
+                Sweeper.Factory,
+                TakeCastle.Factory,
+                TakeCastleStart.Factory,
+                TalismanSlot.Factory,
+                TargetCancel.Factory,
+                TargetMe.Factory,
+                TargetMeProbability.Factory,
+                Teleport.Factory,
+                TeleportToTarget.Factory,
+                TransferDamageToPlayer.Factory,
+                TransferHate.Factory,
+                Transformation.Factory,
+                TriggerSkillByAttack.Factory,
+                TriggerSkillByAttacking.Factory,
+                TriggerSkillByAvoid.Factory,
+                TriggerSkillByChargeShot.Factory,
+                TriggerSkillByDamage.Factory,
+                TriggerSkillByChangeExp.Factory,
+                TriggerSkillByMagicType.Factory,
+                TriggerSkillBySkill.Factory,
+                TwoHandedBluntBonus.Factory,
+                TwoHandedSwordBonus.Factory,
+                Unsummon.Factory,
+                UnsummonAgathion.Factory,
+                VampiricAttack.Factory
+            ;
+
+    provides org.l2j.gameserver.engine.skill.api.SkillConditionFactory
+            with BuildAdvanceBaseSkillCondition.Factory,
+                BuildCampSkillCondition.Factory,
+                CanBookmarkAddSlotSkillCondition.Factory,
+                CannotUseInTransformSkillCondition.Factory,
+                CanSummonCubicSkillCondition.Factory,
+                CanSummonSkillCondition.Factory,
+                CanSummonPetSkillCondition.Factory,
+                CanSummonSiegeGolemSkillCondition.Factory,
+                CanTransformSkillCondition.Factory,
+                CanUntransformSkillCondition.Factory,
+                CanUseInBattlefieldSkillCondition.Factory,
+                CanUseSwoopCannonSkillCondition.Factory,
+                CheckLevelSkillCondition.Factory,
+                FemaleSkillCondition.Factory,
+                ConsumeBodySkillCondition.Factory,
+                EnergySavedSkillCondition.Factory,
+                EquipArmorSkillCondition.Factory,
+                EquipShieldSkillCondition.Factory,
+                EquipWeaponSkillCondition.Factory,
+                NotFearedSkillCondition.Factory,
+                NotInUnderwaterSkillCondition.Factory,
+                NonChaoticSkillCondition.Factory,
+                OpBlinkSkillCondition.Factory,
+                OpCallPcSkillCondition.Factory,
+                OpCanEscapeSkillCondition.Factory,
+                OpChangeWeaponSkillCondition.Factory,
+                OpCheckAbnormalSkillCondition.Factory,
+                OpCheckClassListSkillCondition.Factory,
+                OpCheckResidenceSkillCondition.Factory,
+                OpEnergyMaxSkillCondition.Factory,
+                OpEncumberedSkillCondition.Factory,
+                OpExistNpcSkillCondition.Factory,
+                OpHaveSummonSkillCondition.Factory,
+                OpHomeSkillCondition.Factory,
+                OpMainjobSkillCondition.Factory,
+                OpNeedAgathionSkillCondition.Factory,
+                OpNotCursedSkillCondition.Factory,
+                KillerSkillCondition.Factory,
+                OpPledgeSkillCondition.Factory,
+                OpResurrectionSkillCondition.Factory,
+                OpSkillAcquireSkillCondition.Factory,
+                OpSoulMaxSkillCondition.Factory,
+                OpSweeperSkillCondition.Factory,
+                SkillConditionTargetFactory,
+                OpUnlockSkillCondition.Factory,
+                OpWyvernSkillCondition.Factory,
+                PossessHolythingSkillCondition.Factory,
+                RemainStatusSkillCondition.Factory,
+                SoulSavedSkillCondition.Factory,
+                TargetMyPledgeSkillCondition.Factory;
 
     provides instances.AbstractInstance
-        with  instances.MonsterArena.MonsterArena;
+        with  instances.MonsterArena.MonsterArena,
+            instances.ResidenceOfQueenNebula.ResidenceOfQueenNebula,
+            instances.ResidenceOfKingProcella.ResidenceOfKingProcella,
+            instances.ResidenceOfKingPetram.ResidenceOfKingPetram,
+            instances.ResidenceOfKingIgnis.ResidenceOfKingIgnis,
+            instances.GolbergRoom.GolbergRoom,
+            instances.LastImperialTomb.LastImperialTomb,
+            instances.SevenSignsRBs.SevenSignsRBs;
+
+
 
     provides events.ScriptEvent
         with events.ChefMonkeyEvent.ChefMonkeyEvent,
@@ -72,6 +340,8 @@ open module org.l2j.scripts {
             ai.bosses.Orfen.Orfen,
             ai.bosses.QueenAnt.QueenAnt,
             ai.bosses.Zaken.Zaken,
+            ai.bosses.LimitBarrier,
+
 
             ai.others.ArenaManager.ArenaManager,
             ai.others.CastleBlacksmith.CastleBlacksmith,
@@ -85,6 +355,7 @@ open module org.l2j.scripts {
             ai.others.ClanHallDoorManager.ClanHallDoorManager,
             ai.others.ClanHallManager.ClanHallManager,
             ai.others.ClassMaster.ClassMaster,
+            ai.others.DimensionalMerchant.DimensionalMerchant,
             ai.others.MonumentOfHeroes.MonumentOfHeroes,
             ai.others.NewbieGuide.NewbieGuide,
             ai.others.OlyBuffer.OlyBuffer,
@@ -288,36 +559,37 @@ open module org.l2j.scripts {
             handlers.communityboard.MemoBoard;
 
     provides org.l2j.gameserver.handler.IItemHandler
-        with handlers.itemhandlers.ItemSkillsTemplate,
-            handlers.itemhandlers.ItemSkills,
-            handlers.itemhandlers.BeastSoulShot,
-            handlers.itemhandlers.BeastSpiritShot,
-            handlers.itemhandlers.BlessedSoulShots,
-            handlers.itemhandlers.BlessedSpiritShot,
-            handlers.itemhandlers.Book,
-            handlers.itemhandlers.Bypass,
-            handlers.itemhandlers.Calculator,
-            handlers.itemhandlers.ChangeAttributeCrystal,
-            handlers.itemhandlers.CharmOfCourage,
-            handlers.itemhandlers.Elixir,
-            handlers.itemhandlers.EnchantAttribute,
-            handlers.itemhandlers.EnchantScrolls,
-            handlers.itemhandlers.EventItem,
-            handlers.itemhandlers.ExtractableItems,
-            handlers.itemhandlers.FatedSupportBox,
-            handlers.itemhandlers.FishShots,
-            handlers.itemhandlers.Harvester,
-            handlers.itemhandlers.Maps,
-            handlers.itemhandlers.MercTicket,
-            handlers.itemhandlers.NicknameColor,
-            handlers.itemhandlers.PetFood,
-            handlers.itemhandlers.Recipes,
-            handlers.itemhandlers.RollingDice,
-            handlers.itemhandlers.Seed,
-            handlers.itemhandlers.SoulShots,
-            handlers.itemhandlers.SpecialXMas,
-            handlers.itemhandlers.SpiritShot,
-            handlers.itemhandlers.SummonItems;
+        with handlers.itemhandlers.ItemSkillsTemplate, // skills
+            handlers.itemhandlers.ItemSkills, // skills
+            handlers.itemhandlers.BeastSoulShot, // skills | not used ?
+            handlers.itemhandlers.BeastSpiritShot, //skills | not used ?
+            handlers.itemhandlers.BlessedBeastSpiritShot,
+            handlers.itemhandlers.BlessedSoulShots, // skills
+            handlers.itemhandlers.BlessedSpiritShot, // skills
+            handlers.itemhandlers.Book,  // none | not used ?
+            handlers.itemhandlers.Bypass, //none | not used ?
+            handlers.itemhandlers.Calculator, // none
+            handlers.itemhandlers.ChangeAttributeCrystal, // none | not used ?
+            handlers.itemhandlers.CharmOfCourage, // none | not used ?
+            handlers.itemhandlers.Elixir, // skills | not used ?
+            handlers.itemhandlers.EnchantScrolls, // none
+            handlers.itemhandlers.EventItem, // skills | not used?
+            handlers.itemhandlers.ExtractableItems, // capsuled_items, extract_max, extract_min
+            handlers.itemhandlers.FatedSupportBox, // none | not used ?
+            handlers.itemhandlers.FishShots, // skills
+            handlers.itemhandlers.Harvester, // skills | not used ?
+            handlers.itemhandlers.Maps, // none
+            handlers.itemhandlers.MercTicket, // none
+            handlers.itemhandlers.NicknameColor, // none
+            handlers.itemhandlers.PetFood, // skills |  not used ?
+            handlers.itemhandlers.Recipes, // none
+            handlers.itemhandlers.RollingDice, // none
+            handlers.itemhandlers.Seed, // skills | not used ?
+            handlers.itemhandlers.SoulShots, // skills
+            handlers.itemhandlers.SpecialXMas, // none | not used?
+            handlers.itemhandlers.SpiritShot, // skills
+            handlers.itemhandlers.SummonItems, // not used ?
+                TransformationBook;
 
     provides org.l2j.gameserver.handler.IPunishmentHandler
         with handlers.punishmenthandlers.BanHandler,
@@ -349,7 +621,6 @@ open module org.l2j.scripts {
             handlers.voicedcommandhandlers.Lang,
             handlers.voicedcommandhandlers.ChatAdmin,
             handlers.voicedcommandhandlers.Banking,
-            handlers.voicedcommandhandlers.AutoPotion,
             handlers.voicedcommandhandlers.ChangePassword,
 
             //custom
@@ -384,9 +655,11 @@ open module org.l2j.scripts {
             handlers.targethandlers.affectobject.WyvernObject,
             handlers.targethandlers.affectobject.UndeadRealEnemy,
             handlers.targethandlers.affectobject.ObjectDeadNpcBody,
+            handlers.targethandlers.affectobject.NotFriend,
             handlers.targethandlers.affectobject.NotFriendPc,
             handlers.targethandlers.affectobject.Invisible,
             handlers.targethandlers.affectobject.HiddenPlace,
+            handlers.targethandlers.affectobject.Friend,
             handlers.targethandlers.affectobject.FriendPc,
             handlers.targethandlers.affectobject.Clan;
 
@@ -413,7 +686,8 @@ open module org.l2j.scripts {
             handlers.targethandlers.affectscope.DeadPartyPledge;
 
     provides org.l2j.gameserver.handler.IPlayerActionHandler
-        with handlers.playeractions.PrivateStore,
+        with handlers.playeractions.ActionHandler,
+            handlers.playeractions.PrivateStore,
             handlers.playeractions.UnsummonServitor,
             handlers.playeractions.UnsummonPet,
             handlers.playeractions.TeleportBookmark,
@@ -435,13 +709,18 @@ open module org.l2j.scripts {
             handlers.playeractions.PetHold,
             handlers.playeractions.PetAttack,
             handlers.playeractions.InstanceZoneInfo,
-            handlers.playeractions.BotReport,
-            handlers.playeractions.AirshipAction;
+            handlers.playeractions.BotReport;
 
     provides org.l2j.gameserver.model.quest.Quest
         with
              quests.Q00127_FishingSpecialistsRequest.Q00127_FishingSpecialistsRequest,
                 Q10960_Tutorial,
+                Q201_Tutorial,
+                Q202_Tutorial,
+                Q203_Tutorial,
+                Q204_Tutorial,
+                Q205_Tutorial,
+                Q206_Tutorial,
              quests.Q00300_HuntingLetoLizardman.Q00300_HuntingLetoLizardman,
              quests.Q00326_VanquishRemnants.Q00326_VanquishRemnants,
              quests.Q00327_RecoverTheFarmland.Q00327_RecoverTheFarmland,
@@ -461,5 +740,23 @@ open module org.l2j.scripts {
              quests.Q00662_AGameOfCards.Q00662_AGameOfCards,
              quests.Q00933_ExploringTheWestWingOfTheDungeonOfAbyss.Q00933_ExploringTheWestWingOfTheDungeonOfAbyss,
              quests.Q00935_ExploringTheEastWingOfTheDungeonOfAbyss.Q00935_ExploringTheEastWingOfTheDungeonOfAbyss,
-             quests.Q10866_PunitiveOperationOnTheDevilIsle.Q10866_PunitiveOperationOnTheDevilIsle;
+             quests.Q10866_PunitiveOperationOnTheDevilIsle.Q10866_PunitiveOperationOnTheDevilIsle,
+             quests.Q10961_EffectiveTraining.Q10961_EffectiveTraining,
+             quests.Q10962_NewHorizons.Q10962_NewHorizons,
+             quests.Q10963_ExploringTheAntNest.Q10963_ExploringTheAntNest,
+             quests.Q10964_SecretGarden.Q10964_SecretGarden,
+             quests.Q10965_DeathMysteries.Q10965_DeathMysteries,
+             quests.Q10966_ATripBegins.Q10966_ATripBegins,
+             quests.Q10967_MoreExperience.Q10967_MoreExperience,
+             quests.Q10981_UnbearableWolvesHowling.Q10981_UnbearableWolvesHowling,
+             quests.Q10982_SpiderHunt.Q10982_SpiderHunt,
+             quests.Q10983_TroubledForest.Q10983_TroubledForest,
+             quests.Q10984_CollectSpiderweb.Q10984_CollectSpiderweb,
+             quests.Q10985_CleaningUpTheGround.Q10985_CleaningUpTheGround,
+             quests.Q10986_SwampMonster.Q10986_SwampMonster,
+             quests.Q10987_PlunderedGraves.Q10987_PlunderedGraves,
+             quests.Q10988_Conspiracy.Q10988_Conspiracy,
+             quests.Q10989_DangerousPredators.Q10989_DangerousPredators,
+             quests.Q10990_PoisonExtraction.Q10990_PoisonExtraction;
+
 }

@@ -10,14 +10,15 @@ import org.l2j.gameserver.data.sql.impl.ClanTable;
 import org.l2j.gameserver.data.xml.impl.AdminData;
 import org.l2j.gameserver.data.xml.impl.BuyListData;
 import org.l2j.gameserver.data.xml.impl.MultisellData;
-import org.l2j.gameserver.data.xml.impl.SkillData;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
 import org.l2j.gameserver.handler.CommunityBoardHandler;
 import org.l2j.gameserver.handler.IParseBoardHandler;
 import org.l2j.gameserver.model.actor.Creature;
 import org.l2j.gameserver.model.actor.Summon;
 import org.l2j.gameserver.model.actor.instance.Pet;
 import org.l2j.gameserver.model.actor.instance.Player;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
+import org.l2j.gameserver.world.World;
 import org.l2j.gameserver.world.zone.ZoneType;
 import org.l2j.gameserver.network.serverpackets.BuyList;
 import org.l2j.gameserver.network.serverpackets.ExBuySellList;
@@ -45,22 +46,22 @@ public final class HomeBoard implements IParseBoardHandler {
 	// SQL Queries
 	private static final String COUNT_FAVORITES = "SELECT COUNT(*) AS favorites FROM `bbs_favorites` WHERE `playerId`=?";
 	private static final String NAVIGATION_PATH = "data/html/CommunityBoard/Custom/navigation.html";
-	
+
 	private static final String[] COMMANDS = {
-		"_bbshome",
-		"_bbstop",
-		"_bbsreport"
+			"_bbshome",
+			"_bbstop",
+			"_bbsreport"
 	};
-	
+
 	private static final String[] CUSTOM_COMMANDS = {
-		Config.COMMUNITYBOARD_ENABLE_MULTISELLS ? "_bbsexcmultisell" : null,
-		Config.COMMUNITYBOARD_ENABLE_MULTISELLS ? "_bbsmultisell" : null,
-		Config.COMMUNITYBOARD_ENABLE_MULTISELLS ? "_bbssell" : null,
-		Config.COMMUNITYBOARD_ENABLE_TELEPORTS ? "_bbsteleport" : null,
-		Config.COMMUNITYBOARD_ENABLE_BUFFS ? "_bbsbuff" : null,
-		Config.COMMUNITYBOARD_ENABLE_HEAL ? "_bbsheal" : null
+			Config.COMMUNITYBOARD_ENABLE_MULTISELLS ? "_bbsexcmultisell" : null,
+			Config.COMMUNITYBOARD_ENABLE_MULTISELLS ? "_bbsmultisell" : null,
+			Config.COMMUNITYBOARD_ENABLE_MULTISELLS ? "_bbssell" : null,
+			Config.COMMUNITYBOARD_ENABLE_TELEPORTS ? "_bbsteleport" : null,
+			Config.COMMUNITYBOARD_ENABLE_BUFFS ? "_bbsbuff" : null,
+			Config.COMMUNITYBOARD_ENABLE_HEAL ? "_bbsheal" : null
 	};
-	
+
 	private static final BiPredicate<String, Player> COMBAT_CHECK = (command, activeChar) -> {
 		boolean commandCheck = false;
 		for (String c : CUSTOM_COMMANDS)
@@ -71,12 +72,12 @@ public final class HomeBoard implements IParseBoardHandler {
 				break;
 			}
 		}
-		
+
 		return commandCheck && (activeChar.isCastingNow() || activeChar.isInCombat() || activeChar.isInDuel() || activeChar.isInOlympiadMode() || activeChar.isInsideZone(ZoneType.SIEGE) || activeChar.isInsideZone(ZoneType.PVP));
 	};
-	
+
 	private static final Predicate<Player> KARMA_CHECK = player -> Config.COMMUNITYBOARD_KARMA_DISABLED && (player.getReputation() < 0);
-	
+
 	@Override
 	public String[] getCommunityBoardCommands()
 	{
@@ -85,7 +86,7 @@ public final class HomeBoard implements IParseBoardHandler {
 		commands.addAll(Arrays.asList(CUSTOM_COMMANDS));
 		return commands.stream().filter(Objects::nonNull).toArray(String[]::new);
 	}
-	
+
 	@Override
 	public boolean parseCommunityBoardCommand(String command, Player activeChar)
 	{
@@ -95,26 +96,39 @@ public final class HomeBoard implements IParseBoardHandler {
 			activeChar.sendMessage("You can't use the Community Board right now.");
 			return false;
 		}
-		
+
 		if (KARMA_CHECK.test(activeChar))
 		{
 			activeChar.sendMessage("Players with Karma cannot use the Community Board.");
 			return false;
 		}
-		
+
 		String returnHtml = null;
 		final String navigation = HtmCache.getInstance().getHtm(activeChar, NAVIGATION_PATH);
 		if (command.equals("_bbshome") || command.equals("_bbstop"))
 		{
 			final String customPath = Config.CUSTOM_CB_ENABLED ? "Custom/" : "";
 			CommunityBoardHandler.getInstance().addBypass(activeChar, "Home", command);
-			
+
 			returnHtml = HtmCache.getInstance().getHtm(activeChar, "data/html/CommunityBoard/" + customPath + "home.html");
 			if (!Config.CUSTOM_CB_ENABLED)
 			{
 				returnHtml = returnHtml.replaceAll("%fav_count%", Integer.toString(getFavoriteCount(activeChar)));
 				returnHtml = returnHtml.replaceAll("%region_count%", Integer.toString(getRegionCount(activeChar)));
 				returnHtml = returnHtml.replaceAll("%clan_count%", Integer.toString(ClanTable.getInstance().getClanCount()));
+			}
+			if (Config.CUSTOM_CB_ENABLED)
+			{
+				returnHtml = returnHtml.replaceAll("%name%", activeChar.getName());
+				returnHtml = returnHtml.replaceAll("%premium%", "Could not find acount setup");
+				returnHtml = returnHtml.replaceAll("%clan%", (activeChar.getClan() != null) ? activeChar.getClan().getName() : "No clan");
+				returnHtml = returnHtml.replaceAll("%alliance%", "Could not find it");
+				returnHtml = returnHtml.replaceAll("%country%", "Could not found it");
+				returnHtml = returnHtml.replaceAll("%class%", activeChar.getBaseTemplate().getClassId().name().replace("_", " "));
+				returnHtml = returnHtml.replaceAll("%exp%", String.valueOf(activeChar.getExp()).toString());
+				returnHtml = returnHtml.replaceAll("%adena%", String.valueOf(activeChar.getAdena()).toString());
+				returnHtml = returnHtml.replaceAll("%online%", String.valueOf(activeChar.getUptime()).toString());
+				returnHtml = returnHtml.replaceAll("%onlinePlayers%", String.valueOf(World.getInstance().getPlayers().size()));
 			}
 		}
 		else if (command.startsWith("_bbstop;"))
@@ -124,6 +138,19 @@ public final class HomeBoard implements IParseBoardHandler {
 			if ((path.length() > 0) && path.endsWith(".html"))
 			{
 				returnHtml = HtmCache.getInstance().getHtm(activeChar, "data/html/CommunityBoard/" + customPath + path);
+			}
+			if (Config.CUSTOM_CB_ENABLED && (returnHtml != null))
+			{
+				returnHtml = returnHtml.replaceAll("%name%", activeChar.getName());
+				returnHtml = returnHtml.replaceAll("%premium%", "Could not find acount setup");
+				returnHtml = returnHtml.replaceAll("%clan%", (activeChar.getClan() != null) ? activeChar.getClan().getName() : "No clan");
+				returnHtml = returnHtml.replaceAll("%alliance%", "Could not find it");
+				returnHtml = returnHtml.replaceAll("%country%", "Could not found it");
+				returnHtml = returnHtml.replaceAll("%class%", activeChar.getBaseTemplate().getClassId().name().replace("_", " "));
+				returnHtml = returnHtml.replaceAll("%exp%", String.valueOf(activeChar.getExp()).toString());
+				returnHtml = returnHtml.replaceAll("%adena%", String.valueOf(activeChar.getAdena()).toString());
+				returnHtml = returnHtml.replaceAll("%online%", String.valueOf(activeChar.getUptime()).toString());
+				returnHtml = returnHtml.replaceAll("%onlinePlayers%", String.valueOf(World.getInstance().getPlayers().size()));
 			}
 		}
 		else if (command.startsWith("_bbsmultisell"))
@@ -190,10 +217,10 @@ public final class HomeBoard implements IParseBoardHandler {
 				}
 
 				targets.addAll(activeChar.getServitors().values());
-				
+
 				for (int i = 0; i < buffCount; i++)
 				{
-					final Skill skill = SkillData.getInstance().getSkill(Integer.parseInt(buypassOptions[i].split(",")[0]), Integer.parseInt(buypassOptions[i].split(",")[1]));
+					final Skill skill = SkillEngine.getInstance().getSkill(Integer.parseInt(buypassOptions[i].split(",")[0]), Integer.parseInt(buypassOptions[i].split(",")[1]));
 					if (!Config.COMMUNITY_AVAILABLE_BUFFS.contains(skill.getId()))
 					{
 						continue;
@@ -210,7 +237,7 @@ public final class HomeBoard implements IParseBoardHandler {
 					});
 				}
 			}
-			
+
 			returnHtml = HtmCache.getInstance().getHtm(activeChar, "data/html/CommunityBoard/Custom/" + page + ".html");
 		}
 		else if (command.startsWith("_bbsheal"))
@@ -240,7 +267,7 @@ public final class HomeBoard implements IParseBoardHandler {
 				}
 				activeChar.sendMessage("You used heal!");
 			}
-			
+
 			returnHtml = HtmCache.getInstance().getHtm(activeChar, "data/html/CommunityBoard/Custom/" + page + ".html");
 		} else if(command.startsWith("_bbsreport")) {
 			var reportText =  command.replace("_bbsreport", "");
@@ -254,18 +281,28 @@ public final class HomeBoard implements IParseBoardHandler {
 			activeChar.sendMessage("Thank you For your Report!! the GM will be informed!");
 			AdminData.getInstance().broadcastMessageToGMs(String.format("Player: %s (%s) has just submitted a report!", activeChar.getName(), activeChar.getObjectId()));
 		}
-		
+
 		if (returnHtml != null)
 		{
 			if (Config.CUSTOM_CB_ENABLED)
 			{
 				returnHtml = returnHtml.replace("%navigation%", navigation);
+				returnHtml = returnHtml.replaceAll("%name%", activeChar.getName());
+				returnHtml = returnHtml.replaceAll("%premium%", "Could not find acount setup");
+				returnHtml = returnHtml.replaceAll("%clan%", (activeChar.getClan() != null) ? activeChar.getClan().getName() : "No clan");
+				returnHtml = returnHtml.replaceAll("%alliance%", "Could not find it");
+				returnHtml = returnHtml.replaceAll("%country%", "Could not found it");
+				returnHtml = returnHtml.replaceAll("%class%", activeChar.getBaseTemplate().getClassId().name().replace("_", " "));
+				returnHtml = returnHtml.replaceAll("%exp%", String.valueOf(activeChar.getExp()).toString());
+				returnHtml = returnHtml.replaceAll("%adena%", String.valueOf(activeChar.getAdena()).toString());
+				returnHtml = returnHtml.replaceAll("%online%", String.valueOf(activeChar.getUptime()).toString());
+				returnHtml = returnHtml.replaceAll("%onlinePlayers%", String.valueOf(World.getInstance().getPlayers().size()));
 			}
 			CommunityBoardHandler.separateAndSend(returnHtml, activeChar);
 		}
 		return false;
 	}
-	
+
 	/**
 	 * Gets the Favorite links for the given player.
 	 * @param player the player
@@ -275,7 +312,7 @@ public final class HomeBoard implements IParseBoardHandler {
 	{
 		int count = 0;
 		try (Connection con = DatabaseFactory.getInstance().getConnection();
-			PreparedStatement ps = con.prepareStatement(COUNT_FAVORITES))
+			 PreparedStatement ps = con.prepareStatement(COUNT_FAVORITES))
 		{
 			ps.setInt(1, player.getObjectId());
 			try (ResultSet rs = ps.executeQuery())
@@ -292,7 +329,7 @@ public final class HomeBoard implements IParseBoardHandler {
 		}
 		return count;
 	}
-	
+
 	/**
 	 * Gets the registered regions count for the given player.
 	 * @param player the player

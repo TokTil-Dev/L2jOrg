@@ -1,92 +1,86 @@
 package org.l2j.gameserver.network.clientpackets;
 
-import org.l2j.gameserver.model.PcCondOverride;
 import org.l2j.gameserver.model.actor.instance.Player;
+import org.l2j.gameserver.model.items.BodyPart;
 import org.l2j.gameserver.model.items.EtcItem;
-import org.l2j.gameserver.model.items.ItemTemplate;
 import org.l2j.gameserver.model.items.instance.Item;
 import org.l2j.gameserver.network.SystemMessageId;
 import org.l2j.gameserver.network.serverpackets.InventoryUpdate;
 import org.l2j.gameserver.network.serverpackets.SystemMessage;
 
-import java.util.Arrays;
-
 /**
  * @author Zoey76
+ * @author JoeAlisson
  */
 public class RequestUnEquipItem extends ClientPacket {
-    private int _slot;
+    private int slot;
 
     /**
      * Packet type id 0x16 format: cd
      */
     @Override
     public void readImpl() {
-        _slot = readInt();
+        slot = readInt();
     }
 
     @Override
     public void runImpl() {
-        final Player activeChar = client.getPlayer();
-        if (activeChar == null) {
+        final Player player = client.getPlayer();
+        if (player == null) {
             return;
         }
 
-        final Item item = activeChar.getInventory().getPaperdollItemByL2ItemId(_slot);
-        // Wear-items are not to be unequipped.
+        var bodyPart = BodyPart.fromSlot(slot);
+
+        final Item item = player.getInventory().getItemByBodyPart(bodyPart);
+        // Wear-item are not to be unequipped.
         if (item == null) {
             return;
         }
 
         // The English system message say weapon, but it's applied to any equipped item.
-        if (activeChar.isAttackingNow() || activeChar.isCastingNow()) {
+        if (player.isAttackingNow() || player.isCastingNow()) {
             client.sendPacket(SystemMessageId.YOU_CANNOT_CHANGE_WEAPONS_DURING_AN_ATTACK);
             return;
         }
 
         // Arrows and bolts.
-        if ((_slot == ItemTemplate.SLOT_L_HAND) && (item.getItem() instanceof EtcItem)) {
+        if ((bodyPart == BodyPart.LEFT_HAND) && (item.getTemplate() instanceof EtcItem)) {
             return;
         }
 
         // Prevent of unequipping a cursed weapon.
-        if ((_slot == ItemTemplate.SLOT_LR_HAND) && (activeChar.isCursedWeaponEquipped() || activeChar.isCombatFlagEquipped())) {
+        if ((bodyPart == BodyPart.TWO_HAND) && (player.isCursedWeaponEquipped() || player.isCombatFlagEquipped())) {
             return;
         }
 
-        // Prevent player from unequipping items in special conditions.
-        if (activeChar.hasBlockActions() || activeChar.isAlikeDead()) {
+        // Prevent player from unequipping item in special conditions.
+        if (player.hasBlockActions() || player.isAlikeDead()) {
             return;
         }
 
-        if (!activeChar.getInventory().canManipulateWithItemId(item.getId())) {
+        if (!player.getInventory().canManipulate(item)) {
             client.sendPacket(SystemMessageId.THAT_ITEM_CANNOT_BE_TAKEN_OFF);
             return;
         }
 
-        if (item.isWeapon() && item.getWeaponItem().isForceEquip() && !activeChar.canOverrideCond(PcCondOverride.ITEM_CONDITIONS)) {
-            client.sendPacket(SystemMessageId.THAT_ITEM_CANNOT_BE_TAKEN_OFF);
-            return;
-        }
+        var  modified = player.getInventory().unEquipItemInBodySlotAndRecord(bodyPart);
+        player.broadcastUserInfo();
 
-        final Item[] unequipped = activeChar.getInventory().unEquipItemInBodySlotAndRecord(_slot);
-        activeChar.broadcastUserInfo();
+        var iterator = modified.iterator();
+        if(iterator.hasNext()) {
+            final InventoryUpdate iu = new InventoryUpdate(modified);
+            player.sendInventoryUpdate(iu);
 
-        // This can be 0 if the user pressed the right mouse button twice very fast.
-        if (unequipped.length > 0) {
-            SystemMessage sm = null;
-            if (unequipped[0].getEnchantLevel() > 0) {
-                sm = SystemMessage.getSystemMessage(SystemMessageId.THE_EQUIPMENT_S1_S2_HAS_BEEN_REMOVED);
-                sm.addInt(unequipped[0].getEnchantLevel());
+            var unequipped = iterator.next();
+            SystemMessage sm;
+            if(unequipped.getEnchantLevel() > 0) {
+                sm = SystemMessage.getSystemMessage(SystemMessageId.THE_EQUIPMENT_S1_S2_HAS_BEEN_REMOVED).addInt(unequipped.getEnchantLevel());
             } else {
                 sm = SystemMessage.getSystemMessage(SystemMessageId.S1_HAS_BEEN_UNEQUIPPED);
             }
-            sm.addItemName(unequipped[0]);
+            sm.addItemName(unequipped);
             client.sendPacket(sm);
-
-            final InventoryUpdate iu = new InventoryUpdate();
-            iu.addItems(Arrays.asList(unequipped));
-            activeChar.sendInventoryUpdate(iu);
         }
     }
 }

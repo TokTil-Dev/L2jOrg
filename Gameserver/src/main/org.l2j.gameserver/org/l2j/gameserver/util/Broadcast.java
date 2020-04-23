@@ -1,13 +1,15 @@
 package org.l2j.gameserver.util;
 
 import org.l2j.gameserver.enums.ChatType;
-import org.l2j.gameserver.world.World;
 import org.l2j.gameserver.model.actor.Creature;
 import org.l2j.gameserver.model.actor.Summon;
 import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.network.serverpackets.*;
+import org.l2j.gameserver.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.function.Predicate;
 
 import static org.l2j.gameserver.util.GameUtils.isPlayer;
 
@@ -54,7 +56,7 @@ public final class Broadcast {
         {
             try {
                 player.sendPacket(mov);
-                if ((mov instanceof CharInfo) && (isPlayer(character))) {
+                if ((mov instanceof ExCharInfo) && (isPlayer(character))) {
                     final int relation = ((Player) character).getRelation(player);
                     final Integer oldrelation = character.getKnownRelations().get(player.getObjectId());
                     if ((oldrelation != null) && (oldrelation != relation)) {
@@ -115,8 +117,11 @@ public final class Broadcast {
         toKnownPlayers(character, mov);
     }
 
-    // To improve performance we are comparing values of radius^2 instead of calculating sqrt all the time
     public static void toSelfAndKnownPlayersInRadius(Creature character, ServerPacket mov, int radius) {
+        toSelfAndKnownPlayersInRadius(character, mov, radius, o -> true);
+    }
+
+    public static void toSelfAndKnownPlayersInRadius(Creature character, ServerPacket mov, int radius, Predicate<Player> filter) {
         if (radius < 0) {
             radius = 600;
         }
@@ -125,7 +130,7 @@ public final class Broadcast {
             character.sendPacket(mov);
         }
 
-        World.getInstance().forEachVisibleObjectInRange(character, Player.class, radius, mov::sendTo);
+        World.getInstance().forEachVisibleObjectInRange(character, Player.class, radius, mov::sendTo, filter);
     }
 
     /**
@@ -134,14 +139,10 @@ public final class Broadcast {
      * In order to inform other players of state modification on the Creature, server just need to go through _allPlayers to send Server->Client Packet<BR>
      * <FONT COLOR=#FF0000><B> <U>Caution</U> : This method DOESN'T SEND Server->Client packet to this Creature (to do this use method toSelfAndKnownPlayers)</B></FONT><BR>
      *
-     * @param packet
+     * @param packets
      */
-    public static void toAllOnlinePlayers(ServerPacket packet) {
-        for (Player player : World.getInstance().getPlayers()) {
-            if (player.isOnline()) {
-                player.sendPacket(packet);
-            }
-        }
+    public static void toAllOnlinePlayers(ServerPacket... packets) {
+        World.getInstance().forEachPlayer(p -> p.sendPacket(packets));
     }
 
     public static void toAllOnlinePlayers(String text) {

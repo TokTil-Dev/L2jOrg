@@ -108,13 +108,13 @@ public class SiegeGuards extends AbstractNpcAI
     public String onSpawn(Npc npc)
     {
         npc.setRandomWalking(false);
-        if ((npc.getTemplate().getBaseAttackType() != WeaponType.SWORD) && (npc.getTemplate().getBaseAttackType() != WeaponType.POLE))
+        if ((npc.getTemplate().getBaseAttackType() != WeaponType.SWORD) && (npc.getTemplate().getBaseAttackType() != WeaponType.SPEAR))
         {
             npc.setIsImmobilized(true);
         }
         final Castle castle = npc.getCastle();
         final Fort fortress = npc.getFort();
-        npc.setScriptValue(fortress != null ? fortress.getResidenceId() : (castle != null ? castle.getResidenceId() : 0));
+        npc.setScriptValue(fortress != null ? fortress.getId() : (castle != null ? castle.getId() : 0));
         SPAWNED_GUARDS.add(npc);
         return super.onSpawn(npc);
     }

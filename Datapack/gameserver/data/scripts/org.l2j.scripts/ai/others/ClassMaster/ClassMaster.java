@@ -4,7 +4,7 @@ import ai.AbstractNpcAI;
 import org.l2j.gameserver.Config;
 import org.l2j.gameserver.data.xml.CategoryManager;
 import org.l2j.gameserver.data.xml.impl.ClassListData;
-import org.l2j.gameserver.datatables.ItemTable;
+import org.l2j.gameserver.engine.item.ItemEngine;
 import org.l2j.gameserver.enums.CategoryType;
 import org.l2j.gameserver.model.actor.Npc;
 import org.l2j.gameserver.model.actor.instance.Player;
@@ -345,6 +345,11 @@ public final class ClassMaster extends AbstractNpcAI
 						htmltext = "test_server_helper026i.html";
 						break;
 					}
+					case JIN_KAMAEL_SOLDIER:
+					{
+						htmltext = "test_server_helper026j.html";
+						break;
+					}
 				}
 			}
 		}
@@ -511,6 +516,12 @@ public final class ClassMaster extends AbstractNpcAI
 						htmltext = "test_server_helper020a.html";
 						break;
 					}
+					case JIN_KAMAEL_SOLDIER:
+					case TROOPER:
+					{
+						htmltext = "test_server_helper020c.html";
+						break;
+					}
 				}
 			}
 		}
@@ -639,7 +650,7 @@ public final class ClassMaster extends AbstractNpcAI
 	@RegisterType(ListenerRegisterType.GLOBAL_PLAYERS)
 	public void onPlayerPressTutorialMark(OnPlayerPressTutorialMark event)
 	{
-		final Player player = event.getActiveChar();
+		final Player player = event.getPlayer();
 		
 		if (!_showPopupWindow || (event.getMarkId() != 2)) // mark id was 1001 - used 2 for quest text
 		{
@@ -666,7 +677,7 @@ public final class ClassMaster extends AbstractNpcAI
 		
 		if (html != null)
 		{
-			showResult(event.getActiveChar(), html);
+			showResult(event.getPlayer(), html);
 			// player.sendPacket(new TutorialShowHtml(html));
 		}
 	}
@@ -677,9 +688,9 @@ public final class ClassMaster extends AbstractNpcAI
 	{
 		if (event.getCommand().startsWith("Quest ClassMaster "))
 		{
-			final String html = onAdvEvent(event.getCommand().substring(18), null, event.getActiveChar());
-			event.getActiveChar().sendPacket(TutorialCloseHtml.STATIC_PACKET);
-			showResult(event.getActiveChar(), html);
+			final String html = onAdvEvent(event.getCommand().substring(18), null, event.getPlayer());
+			event.getPlayer().sendPacket(TutorialCloseHtml.STATIC_PACKET);
+			showResult(event.getPlayer(), html);
 		}
 	}
 	
@@ -701,7 +712,7 @@ public final class ClassMaster extends AbstractNpcAI
 	@RegisterType(ListenerRegisterType.GLOBAL_PLAYERS)
 	public void OnPlayerLogin(OnPlayerLogin event)
 	{
-		showPopupWindow(event.getActiveChar());
+		showPopupWindow(event.getPlayer());
 	}
 	
 	private String getClassChangeOptions(Player player, int selectedClassId)
@@ -729,7 +740,7 @@ public final class ClassMaster extends AbstractNpcAI
 			{
 				option.getItemsRequired().forEach(ih ->
 				{
-					sb.append("<tr><td><font color=\"LEVEL\">" + ih.getCount() + "</font></td><td>" + ItemTable.getInstance().getTemplate(ih.getId()).getName() + "</td><td width=30></td></tr>");
+					sb.append("<tr><td><font color=\"LEVEL\">" + ih.getCount() + "</font></td><td>" + ItemEngine.getInstance().getTemplate(ih.getId()).getName() + "</td><td width=30></td></tr>");
 				});
 			}
 			sb.append("<tr><td>Rewards:</td></tr>");
@@ -754,7 +765,7 @@ public final class ClassMaster extends AbstractNpcAI
 			{
 				option.getItemsRewarded().forEach(ih ->
 				{
-					sb.append("<tr><td><font color=\"LEVEL\">" + ih.getCount() + "</font></td><td>" + ItemTable.getInstance().getTemplate(ih.getId()).getName() + "</td><td width=30></td></tr>");
+					sb.append("<tr><td><font color=\"LEVEL\">" + ih.getCount() + "</font></td><td>" + ItemEngine.getInstance().getTemplate(ih.getId()).getName() + "</td><td width=30></td></tr>");
 				});
 				
 				if (option.isRewardNoblesse())

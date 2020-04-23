@@ -6,7 +6,8 @@ import org.l2j.commons.network.SessionKey;
 import org.l2j.commons.util.Util;
 import org.l2j.gameserver.Config;
 import org.l2j.gameserver.data.database.dao.AccountDAO;
-import org.l2j.gameserver.data.database.dao.CharacterDAO;
+import org.l2j.gameserver.data.database.dao.PlayerDAO;
+import org.l2j.gameserver.data.database.dao.ShortcutDAO;
 import org.l2j.gameserver.data.database.data.AccountData;
 import org.l2j.gameserver.data.sql.impl.ClanTable;
 import org.l2j.gameserver.data.sql.impl.PlayerNameTable;
@@ -60,7 +61,7 @@ public final class GameClient extends Client<io.github.joealisson.mmocore.Connec
     private final Crypt crypt;
     private String accountName;
     private SessionKey sessionId;
-    private Player activeChar;
+    private Player player;
     private ClientHardwareInfoHolder hardwareInfo;
     private boolean isAuthedGG;
     private CharSelectInfoPackage[] charSlotMapping = null;
@@ -85,6 +86,7 @@ public final class GameClient extends Client<io.github.joealisson.mmocore.Connec
         }
 
         PlayerNameTable.getInstance().removeName(objId);
+        getDAO(ShortcutDAO.class).deleteAll(objId);
 
         try (Connection con = DatabaseFactory.getInstance().getConnection()) {
             try (PreparedStatement ps = con.prepareStatement("DELETE FROM character_contacts WHERE charId=? OR contactId=?")) {
@@ -93,7 +95,7 @@ public final class GameClient extends Client<io.github.joealisson.mmocore.Connec
                 ps.execute();
             }
 
-            getDAO(CharacterDAO.class).deleteFriendship(objId);
+            getDAO(PlayerDAO.class).deleteFriendship(objId);
 
             try (PreparedStatement ps = con.prepareStatement("DELETE FROM character_hennas WHERE charId=?")) {
                 ps.setInt(1, objId);
@@ -111,11 +113,6 @@ public final class GameClient extends Client<io.github.joealisson.mmocore.Connec
             }
 
             try (PreparedStatement ps = con.prepareStatement("DELETE FROM character_recipebook WHERE charId=?")) {
-                ps.setInt(1, objId);
-                ps.execute();
-            }
-
-            try (PreparedStatement ps = con.prepareStatement("DELETE FROM character_shortcuts WHERE charId=?")) {
                 ps.setInt(1, objId);
                 ps.execute();
             }
@@ -224,7 +221,7 @@ public final class GameClient extends Client<io.github.joealisson.mmocore.Connec
         }
         AuthServerCommunication.getInstance().sendPacket(new PlayerLogout(getAccountName()));
 
-        if ((activeChar == null) || !activeChar.isInOfflineMode()) {
+        if ((player == null) || !player.isInOfflineMode()) {
             Disconnection.of(this).onDisconnection();
         }
     }
@@ -255,11 +252,11 @@ public final class GameClient extends Client<io.github.joealisson.mmocore.Connec
     }
 
     public Player getPlayer() {
-        return activeChar;
+        return player;
     }
 
-    public void setPlayer(Player activeChar) {
-        this.activeChar = activeChar;
+    public void setPlayer(Player player) {
+        this.player = player;
     }
 
     public ReentrantLock getActivePlayerLock() {
@@ -300,12 +297,12 @@ public final class GameClient extends Client<io.github.joealisson.mmocore.Connec
     }
 
     public void sendPacket(ServerPacket packet) {
-        if (isDetached || (packet == null)) {
+        if (isDetached || isNull(packet)) {
             return;
         }
 
         writePacket(packet);
-        packet.runImpl(activeChar);
+        packet.runImpl(player);
     }
 
 
@@ -404,7 +401,15 @@ public final class GameClient extends Client<io.github.joealisson.mmocore.Connec
             if (player.isOnlineInt() == 1) {
                 LOGGER.error("Attempt of double login: {} ({}) {}", player.getName(), objectId, accountName);
             }
-            Disconnection.of(player).defaultSequence(false);
+            if (player.getClient() != null)
+            {
+                Disconnection.of(player).defaultSequence(false);
+            }
+            else
+            {
+                player.storeMe();
+                player.deleteMe();
+            }
             return null;
         }
 
@@ -504,8 +509,8 @@ public final class GameClient extends Client<io.github.joealisson.mmocore.Connec
         var currentVipTier = VipEngine.getInstance().getVipTier(getVipPoints());
         getAccountData().updateVipPoints(points);
         var newTier = VipEngine.getInstance().getVipTier(getVipPoints());
-        if(newTier != currentVipTier && nonNull(activeChar)) {
-            activeChar.setVipTier(newTier);
+        if(newTier != currentVipTier && nonNull(player)) {
+            player.setVipTier(newTier);
             if(newTier > 0) {
                 getAccountData().setVipTierExpiration(Instant.now().plus(30, ChronoUnit.DAYS).toEpochMilli());
             } else {
@@ -539,7 +544,7 @@ public final class GameClient extends Client<io.github.joealisson.mmocore.Connec
             return switch (state) {
                 case CONNECTED, CLOSING, DISCONNECTED  -> "[IP: " + (address == null ? "disconnected" : address) + "]";
                 case AUTHENTICATED -> "[Account: " + accountName + " - IP: " + (address == null ? "disconnected" : address) + "]";
-                case IN_GAME, JOINING_GAME -> "[Character: " + (activeChar == null ? "disconnected" : activeChar.getName() + "[" + activeChar.getObjectId() + "]") + " - Account: " + accountName + " - IP: " + (address == null ? "disconnected" : address) + "]";
+                case IN_GAME, JOINING_GAME -> "[Player: " + (player == null ? "disconnected" : player.getName() + "[" + player.getObjectId() + "]") + " - Account: " + accountName + " - IP: " + (address == null ? "disconnected" : address) + "]";
             };
         } catch (NullPointerException e) {
             return "[Character read failed due to disconnect]";

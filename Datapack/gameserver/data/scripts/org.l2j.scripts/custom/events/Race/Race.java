@@ -3,14 +3,14 @@ package custom.events.Race;
 import events.ScriptEvent;
 import org.l2j.commons.threading.ThreadPool;
 import org.l2j.gameserver.Config;
-import org.l2j.gameserver.data.xml.impl.SkillData;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
 import org.l2j.gameserver.enums.ChatType;
 import org.l2j.gameserver.model.actor.Npc;
 import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.model.quest.Event;
 import org.l2j.gameserver.model.quest.QuestState;
 import org.l2j.gameserver.model.skills.AbnormalType;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.network.serverpackets.CreatureSay;
 import org.l2j.gameserver.network.serverpackets.html.NpcHtmlMessage;
 import org.l2j.gameserver.util.Broadcast;
@@ -229,7 +229,7 @@ public final class Race extends Event implements ScriptEvent
 			else
 			{
 				final int _number = Integer.valueOf(bypass.substring(5));
-				final Skill _sk = SkillData.getInstance().getSkill(_number, 1);
+				final Skill _sk = SkillEngine.getInstance().getSkill(_number, 1);
 				if (_sk != null)
 				{
 					_skill = _number;
@@ -362,7 +362,7 @@ public final class Race extends Event implements ScriptEvent
 		player.getEffectList().stopEffects(AbnormalType.SPEED_UP);
 		player.stopSkillEffects(true, 268);
 		player.stopSkillEffects(true, 298); // Rabbit Spirit Totem
-		SkillData.getInstance().getSkill(_skill, 1).applyEffects(player, player);
+		SkillEngine.getInstance().getSkill(_skill, 1).applyEffects(player, player);
 	}
 	
 	private void sendMessage(Player player, String text)

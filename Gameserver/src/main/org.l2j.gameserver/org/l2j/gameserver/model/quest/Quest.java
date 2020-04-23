@@ -3,9 +3,10 @@ package org.l2j.gameserver.model.quest;
 import org.l2j.commons.database.DatabaseFactory;
 import org.l2j.commons.util.CommonUtil;
 import org.l2j.commons.util.Rnd;
+import org.l2j.commons.util.Util;
 import org.l2j.gameserver.Config;
 import org.l2j.gameserver.cache.HtmCache;
-import org.l2j.gameserver.datatables.ItemTable;
+import org.l2j.gameserver.engine.item.ItemEngine;
 import org.l2j.gameserver.enums.CategoryType;
 import org.l2j.gameserver.enums.QuestType;
 import org.l2j.gameserver.enums.Race;
@@ -34,7 +35,7 @@ import org.l2j.gameserver.model.items.ItemTemplate;
 import org.l2j.gameserver.model.items.instance.Item;
 import org.l2j.gameserver.model.olympiad.CompetitionType;
 import org.l2j.gameserver.model.olympiad.Participant;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.network.serverpackets.QuestList;
 import org.l2j.gameserver.world.zone.Zone;
 import org.l2j.gameserver.network.NpcStringId;
@@ -401,7 +402,7 @@ public class Quest extends AbstractScript implements IIdentifiable {
         if ((qs != null) || !initIfNone) {
             return qs;
         }
-        return newQuestState(player);
+        return canStartQuest(player) ? newQuestState(player) : null;
     }
 
     /**
@@ -2459,7 +2460,7 @@ public class Quest extends AbstractScript implements IIdentifiable {
      */
     public void registerQuestItems(int... items) {
         for (int id : items) {
-            if ((id != 0) && (ItemTable.getInstance().getTemplate(id) == null)) {
+            if ((id != 0) && (ItemEngine.getInstance().getTemplate(id) == null)) {
                 LOGGER.error("Found registerQuestItems for non existing item: {}!", id);
             }
         }
@@ -2533,7 +2534,7 @@ public class Quest extends AbstractScript implements IIdentifiable {
 
     public void setOnEnterWorld(boolean state) {
         if (state) {
-            setPlayerLoginId(event -> notifyEnterWorld(event.getActiveChar()));
+            setPlayerLoginId(event -> notifyEnterWorld(event.getPlayer()));
         } else {
             getListeners().stream().filter(listener -> listener.getType() == EventType.ON_PLAYER_LOGIN).forEach(AbstractEventListener::unregisterMe);
         }
@@ -2806,15 +2807,8 @@ public class Quest extends AbstractScript implements IIdentifiable {
         addCondStart(p -> p.getClassId() == classId, html);
     }
 
-    /**
-     * Adds a class ID start condition to the quest.
-     *
-     * @param classId the class ID
-     * @param pairs   the HTML to display if the condition is not met per each npc
-     */
-    @SafeVarargs
-    public final void addCondClassId(ClassId classId, KeyValuePair<Integer, String>... pairs) {
-        addCondStart(p -> p.getClassId() == classId, pairs);
+    public final void addCondClassIds(ClassId... classIds) {
+        addCondStart(p -> Util.contains(classIds, p.getClassId()), "");
     }
 
     /**

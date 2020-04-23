@@ -6,7 +6,7 @@ import org.l2j.gameserver.model.actor.Creature;
 import org.l2j.gameserver.model.actor.instance.Pet;
 import org.l2j.gameserver.model.actor.transform.TransformType;
 import org.l2j.gameserver.model.itemcontainer.Inventory;
-import org.l2j.gameserver.model.items.ItemTemplate;
+import org.l2j.gameserver.model.items.BodyPart;
 import org.l2j.gameserver.model.items.instance.Item;
 import org.l2j.gameserver.model.items.type.WeaponType;
 
@@ -36,7 +36,7 @@ public interface IStatsFunction {
      * @return
      */
     static double calcEnchantMatkBonus(Item item, double blessedBonus, int enchant) {
-        switch (item.getItem().getCrystalType()) {
+        switch (item.getTemplate().getCrystalType()) {
             case S: {
                 // M. Atk. increases by 4 for all weapons.
                 // Starting at +4, M. Atk. bonus double.
@@ -64,9 +64,9 @@ public interface IStatsFunction {
      * @return
      */
     static double calcEnchantedPAtkBonus(Item item, double blessedBonus, int enchant) {
-        switch (item.getItem().getCrystalType()) {
+        switch (item.getTemplate().getCrystalType()) {
             case S: {
-                if (item.getWeaponItem().getBodyPart() == ItemTemplate.SLOT_LR_HAND && (item.getWeaponItem().getItemType() != WeaponType.POLE)) {
+                if (item.getBodyPart() == BodyPart.TWO_HAND && (item.getWeaponItem().getItemType() != WeaponType.SPEAR)) {
                     if (item.getWeaponItem().getItemType().isRanged()) {
                         // P. Atk. increases by 10 for bows.
                         // Starting at +4, P. Atk. bonus double.
@@ -81,7 +81,7 @@ public interface IStatsFunction {
                 return (5 * enchant) + (10 * Math.max(0, enchant - 3));
             }
             case A: {
-                if (item.getWeaponItem().getBodyPart() == ItemTemplate.SLOT_LR_HAND && (item.getWeaponItem().getItemType() != WeaponType.POLE)) {
+                if (item.getBodyPart() == BodyPart.TWO_HAND && (item.getWeaponItem().getItemType() != WeaponType.SPEAR)) {
                     if (item.getWeaponItem().getItemType().isRanged()) {
                         // P. Atk. increases by 8 for bows.
                         // Starting at +4, P. Atk. bonus double.
@@ -97,7 +97,7 @@ public interface IStatsFunction {
             }
             case B:
             case C: {
-                if (item.getWeaponItem().getBodyPart() == ItemTemplate.SLOT_LR_HAND && (item.getWeaponItem().getItemType() != WeaponType.POLE)) {
+                if (item.getBodyPart() == BodyPart.TWO_HAND && (item.getWeaponItem().getItemType() != WeaponType.SPEAR)) {
                     if (item.getWeaponItem().getItemType().isRanged()) {
                         // P. Atk. increases by 6 for bows.
                         // Starting at +4, P. Atk. bonus double.
@@ -130,13 +130,13 @@ public interface IStatsFunction {
         }
     }
 
-    default double calcEnchantBodyPart(Creature creature, int... slots) {
+    default double calcEnchantBodyPart(Creature creature, BodyPart... parts) {
         double value = 0;
-        for (int slot : slots) {
-            final Item item = creature.getInventory().getPaperdollItemByL2ItemId(slot);
+        for (var part : parts) {
+            final Item item = creature.getInventory().getItemByBodyPart(part);
             // TODO Confirm if the bonus is applied for any Grade
             if ((item != null) && (item.getEnchantLevel() >= 4)) {
-                value += calcEnchantBodyPartBonus(item.getEnchantLevel(), item.getItem().isBlessed());
+                value += calcEnchantBodyPartBonus(item.getEnchantLevel(), item.getTemplate().isBlessed());
             }
         }
         return value;
@@ -146,74 +146,72 @@ public interface IStatsFunction {
         return 0;
     }
 
-    default double calcWeaponBaseValue(Creature creature, Stats stat) {
+    default double calcWeaponBaseValue(Creature creature, Stat stat) {
         final double baseTemplateValue = creature.getTemplate().getBaseValue(stat, 0);
         double baseValue = creature.getTransformation().map(transform -> transform.getStats(creature, stat, baseTemplateValue)).orElse(baseTemplateValue);
         if (isPet(creature)) {
             final Pet pet = (Pet) creature;
             final Item weapon = pet.getActiveWeaponInstance();
-            final double baseVal = stat == Stats.PHYSICAL_ATTACK ? pet.getPetLevelData().getPetPAtk() : stat == Stats.MAGIC_ATTACK ? pet.getPetLevelData().getPetMAtk() : baseTemplateValue;
-            baseValue = baseVal + (weapon != null ? weapon.getItem().getStats(stat, baseVal) : 0);
+            final double baseVal = stat == Stat.PHYSICAL_ATTACK ? pet.getPetLevelData().getPetPAtk() : stat == Stat.MAGIC_ATTACK ? pet.getPetLevelData().getPetMAtk() : baseTemplateValue;
+            baseValue = baseVal + (weapon != null ? weapon.getTemplate().getStats(stat, baseVal) : 0);
         } else if (isPlayer(creature) && (!creature.isTransformed() || (creature.getTransformation().get().getType() == TransformType.COMBAT) || (creature.getTransformation().get().getType() == TransformType.MODE_CHANGE))) {
             final Item weapon = creature.getActiveWeaponInstance();
-            baseValue = (weapon != null ? weapon.getItem().getStats(stat, baseTemplateValue) : baseTemplateValue);
+            baseValue = (weapon != null ? weapon.getTemplate().getStats(stat, baseTemplateValue) : baseTemplateValue);
         }
 
         return baseValue;
     }
 
-    default double calcWeaponPlusBaseValue(Creature creature, Stats stat) {
+    default double calcWeaponPlusBaseValue(Creature creature, Stat stat) {
         final double baseTemplateValue = creature.getTemplate().getBaseValue(stat, 0);
         double baseValue = creature.getTransformation().filter(transform -> !transform.isStance()).map(transform -> transform.getStats(creature, stat, baseTemplateValue)).orElse(baseTemplateValue);
 
         if (isPlayable(creature)) {
             final Inventory inv = creature.getInventory();
             if (inv != null) {
-                for (Item item : inv.getPaperdollItems(Item::isEquipped)) {
-                    baseValue += item.getItem().getStats(stat, 0);
-                }
+                baseValue = inv.calcForEachEquippedItem(item -> item.getStats(stat, 0), baseValue, Double::sum);
             }
         }
 
         return baseValue;
     }
 
-    default double calcEnchantedItemBonus(Creature creature, Stats stat) {
+    default double calcEnchantedItemBonus(Creature creature, Stat stat) {
         if (!isPlayer(creature)) {
             return 0;
         }
 
-        double value = 0;
-        for (Item equippedItem : creature.getInventory().getPaperdollItems(Item::isEquipped, Item::isEnchanted)) {
-            final ItemTemplate item = equippedItem.getItem();
-            final long bodypart = item.getBodyPart();
-            if ((bodypart == ItemTemplate.SLOT_HAIR) || //
-                    (bodypart == ItemTemplate.SLOT_HAIR2) || //
-                    (bodypart == ItemTemplate.SLOT_HAIRALL)) {
-                // TODO: Item after enchant shows pDef, but scroll says mDef increase.
-                if ((stat != Stats.PHYSICAL_DEFENCE) && (stat != Stats.MAGICAL_DEFENCE)) {
-                    continue;
-                }
-            } else if (item.getStats(stat, 0) <= 0) {
-                continue;
-            }
+        return creature.getInventory().calcForEachEquippedItem(item -> calcEnchantStatBonus(creature, stat, item),0, Double::sum);
+    }
 
-            final double blessedBonus = item.isBlessed() ? 1.5 : 1;
-            int enchant = equippedItem.getEnchantLevel();
-
-            if (creature.getActingPlayer().isInOlympiadMode() && (Config.ALT_OLY_ENCHANT_LIMIT >= 0) && (enchant > Config.ALT_OLY_ENCHANT_LIMIT)) {
-                enchant = Config.ALT_OLY_ENCHANT_LIMIT;
-            }
-
-            if ((stat == Stats.MAGICAL_DEFENCE) || (stat == Stats.PHYSICAL_DEFENCE)) {
-                value += calcEnchantDefBonus(equippedItem, blessedBonus, enchant);
-            } else if (stat == Stats.MAGIC_ATTACK) {
-                value += calcEnchantMatkBonus(equippedItem, blessedBonus, enchant);
-            } else if ((stat == Stats.PHYSICAL_ATTACK) && equippedItem.isWeapon()) {
-                value += calcEnchantedPAtkBonus(equippedItem, blessedBonus, enchant);
-            }
+    private double calcEnchantStatBonus(Creature creature, Stat stat, Item item) {
+        if(!item.isEnchanted()) {
+            return 0;
         }
-        return value;
+        var bodyPart = item.getBodyPart();
+        if(bodyPart.isAnyOf(BodyPart.HAIR, BodyPart.HAIR2, BodyPart.HAIR_ALL)) {
+             if(stat != Stat.PHYSICAL_DEFENCE && stat != Stat.MAGICAL_DEFENCE) {
+                 return 0;
+             }
+        } else if(item.getStats(stat, 0) <= 0) {
+            return 0;
+        }
+
+        final double blessedBonus = item.isBlessed() ? 1.5 : 1;
+        int enchant = item.getEnchantLevel();
+
+        if (creature.getActingPlayer().isInOlympiadMode() && (Config.ALT_OLY_ENCHANT_LIMIT >= 0) && (enchant > Config.ALT_OLY_ENCHANT_LIMIT)) {
+            enchant = Config.ALT_OLY_ENCHANT_LIMIT;
+        }
+
+        if ((stat == Stat.MAGICAL_DEFENCE) || (stat == Stat.PHYSICAL_DEFENCE)) {
+            return calcEnchantDefBonus(item, blessedBonus, enchant);
+        } else if (stat == Stat.MAGIC_ATTACK) {
+            return calcEnchantMatkBonus(item, blessedBonus, enchant);
+        } else if ((stat == Stat.PHYSICAL_ATTACK) && item.isWeapon()) {
+            return calcEnchantedPAtkBonus(item, blessedBonus, enchant);
+        }
+        return 0;
     }
 
     default double validateValue(Creature creature, double value, double minValue, double maxValue) {
@@ -224,5 +222,5 @@ public interface IStatsFunction {
         return Math.max(minValue, value);
     }
 
-    double calc(Creature creature, Optional<Double> base, Stats stat);
+    double calc(Creature creature, Optional<Double> base, Stat stat);
 }

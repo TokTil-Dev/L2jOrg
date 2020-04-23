@@ -1,5 +1,6 @@
 package org.l2j.gameserver.model;
 
+import org.l2j.commons.util.StreamUtil;
 import org.l2j.commons.util.TimeUtil;
 import org.l2j.commons.util.Util;
 import org.l2j.gameserver.model.holders.MinionHolder;
@@ -14,6 +15,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+
+import static org.l2j.commons.util.Util.isInteger;
 
 /**
  * This class is meant to hold a set of (key,value) pairs.<br>
@@ -41,6 +44,11 @@ public class StatsSet implements IParserAdvUtils {
         _set = map;
     }
 
+    public StatsSet(StatsSet other) {
+        this();
+        merge(other);
+    }
+
     public static StatsSet valueOf(String key, Object value) {
         final StatsSet set = new StatsSet();
         set.set(key, value);
@@ -63,6 +71,10 @@ public class StatsSet implements IParserAdvUtils {
      */
     public void merge(StatsSet newSet) {
         _set.putAll(newSet.getSet());
+    }
+
+    public void merge(Map<String, Object> map) {
+        _set.putAll(map);
     }
 
     /**
@@ -89,7 +101,7 @@ public class StatsSet implements IParserAdvUtils {
             throw new IllegalArgumentException("Boolean value required, but not specified");
         }
         if (val instanceof Boolean) {
-            return ((Boolean) val).booleanValue();
+            return (Boolean) val;
         }
         try {
             return Boolean.parseBoolean((String) val);
@@ -214,11 +226,16 @@ public class StatsSet implements IParserAdvUtils {
         if (val instanceof Number) {
             return ((Number) val).shortValue();
         }
-        try {
-            return Short.parseShort((String) val);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Short value required, but found: " + val);
+        if(val instanceof String) {
+            var stringVal =  (String) val;
+            if(stringVal.contains(".")) {
+                stringVal = stringVal.substring(0, stringVal.indexOf("."));
+            }
+            if(isInteger(stringVal)) {
+                return Short.parseShort(stringVal);
+            }
         }
+        throw new IllegalArgumentException("Short value required, but found: " + val);
     }
 
     @Override
@@ -258,15 +275,25 @@ public class StatsSet implements IParserAdvUtils {
             throw new IllegalArgumentException("Integer value required, but not specified: " + key + "!");
         }
 
+        return parseInt(val);
+    }
+
+    private int parseInt(Object val) {
         if (val instanceof Number) {
             return ((Number) val).intValue();
         }
 
-        try {
-            return Integer.parseInt((String) val);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Integer value required, but found: " + val + "!");
+        if (val instanceof String) {
+            var stringVal = (String) val;
+            if(stringVal.contains(".")) {
+                stringVal = stringVal.substring(0, stringVal.indexOf("."));
+            }
+
+            if (isInteger(stringVal)) {
+                return Integer.parseInt(stringVal);
+            }
         }
+        throw new IllegalArgumentException("Integer value required, but found: " + val);
     }
 
     @Override
@@ -276,14 +303,7 @@ public class StatsSet implements IParserAdvUtils {
         if (val == null) {
             return defaultValue;
         }
-        if (val instanceof Number) {
-            return ((Number) val).intValue();
-        }
-        try {
-            return Integer.parseInt((String) val);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Integer value required, but found: " + val);
-        }
+        return parseInt(val);
     }
 
     public int increaseInt(String key, int increaseWith) {
@@ -636,6 +656,22 @@ public class StatsSet implements IParserAdvUtils {
     public <T> List<T> getList(String key, Class<T> clazz, List<T> defaultValue) {
         final List<T> list = getList(key, clazz);
         return list == null ? defaultValue : list;
+    }
+
+    public <T extends Enum<T>> EnumSet<T> getStringAsEnumSet(String key, Class<T> enumClass) {
+        return getStringAsEnumSet(key, enumClass, Util.SPACE);
+    }
+
+    public <T extends Enum<T>> EnumSet<T> getStringAsEnumSet(String key, Class<T> enumClass, String delimiter) {
+        var values = getString(key);
+        if(Util.isNotEmpty(values)) {
+            try {
+              return StreamUtil.collectToEnumSet(enumClass, Arrays.stream(values.split(delimiter)).map(e -> Enum.valueOf(enumClass, e)));
+            } catch (Exception e) {
+                LOGGER.error(e.getMessage(), e);
+            }
+        }
+        return EnumSet.noneOf(enumClass);
     }
 
     @SuppressWarnings("unchecked")

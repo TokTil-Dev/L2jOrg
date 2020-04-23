@@ -1,31 +1,30 @@
 package org.l2j.gameserver.model.stats.finalizers;
 
 import org.l2j.gameserver.Config;
-import org.l2j.gameserver.data.xml.impl.ClanHallData;
+import org.l2j.gameserver.data.database.data.ResidenceFunctionData;
+import org.l2j.gameserver.data.xml.impl.ClanHallManager;
 import org.l2j.gameserver.instancemanager.CastleManager;
 import org.l2j.gameserver.instancemanager.FortDataManager;
 import org.l2j.gameserver.instancemanager.SiegeManager;
-import org.l2j.gameserver.world.zone.ZoneManager;
-import org.l2j.gameserver.model.SiegeClan;
 import org.l2j.gameserver.model.actor.Creature;
-import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.model.actor.instance.Pet;
+import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.model.entity.Castle;
-import org.l2j.gameserver.model.entity.Castle.CastleFunction;
 import org.l2j.gameserver.model.entity.Fort;
 import org.l2j.gameserver.model.entity.Fort.FortFunction;
 import org.l2j.gameserver.model.entity.Siege;
 import org.l2j.gameserver.model.residences.AbstractResidence;
-import org.l2j.gameserver.model.residences.ResidenceFunction;
 import org.l2j.gameserver.model.residences.ResidenceFunctionType;
 import org.l2j.gameserver.model.stats.BaseStats;
 import org.l2j.gameserver.model.stats.IStatsFunction;
-import org.l2j.gameserver.model.stats.Stats;
-import org.l2j.gameserver.world.zone.ZoneType;
-import org.l2j.gameserver.world.zone.type.*;
-import org.l2j.gameserver.world.zone.type.CastleZone;
-import org.l2j.gameserver.world.zone.type.FortZone;
+import org.l2j.gameserver.model.stats.Stat;
 import org.l2j.gameserver.util.GameUtils;
+import org.l2j.gameserver.world.zone.ZoneManager;
+import org.l2j.gameserver.world.zone.ZoneType;
+import org.l2j.gameserver.world.zone.type.CastleZone;
+import org.l2j.gameserver.world.zone.type.ClanHallZone;
+import org.l2j.gameserver.world.zone.type.FortZone;
+import org.l2j.gameserver.world.zone.type.MotherTreeZone;
 
 import java.util.Optional;
 
@@ -36,18 +35,18 @@ import static org.l2j.gameserver.util.GameUtils.isPlayer;
  * @author UnAfraid
  */
 public class RegenHPFinalizer implements IStatsFunction {
-    private static double calcSiegeRegenModifier(Player activeChar) {
-        if ((activeChar == null) || (activeChar.getClan() == null)) {
+    private static double calcSiegeRegenModifier(Player player) {
+        if ((player == null) || (player.getClan() == null)) {
             return 0;
         }
 
-        final Siege siege = SiegeManager.getInstance().getSiege(activeChar.getX(), activeChar.getY(), activeChar.getZ());
+        final Siege siege = SiegeManager.getInstance().getSiege(player);
         if ((siege == null) || !siege.isInProgress()) {
             return 0;
         }
 
-        final SiegeClan siegeClan = siege.getAttackerClan(activeChar.getClan().getId());
-        if ((siegeClan == null) || siegeClan.getFlag().isEmpty() || !GameUtils.checkIfInRange(200, activeChar, siegeClan.getFlag().stream().findAny().get(), true)) {
+        final var siegeClan = siege.getAttackerClan(player.getClan().getId());
+        if ((siegeClan == null) || siegeClan.getFlags().isEmpty() || !GameUtils.checkIfInRange(200, player, siegeClan.getFlags().stream().findAny().get(), true)) {
             return 0;
         }
 
@@ -55,11 +54,13 @@ public class RegenHPFinalizer implements IStatsFunction {
     }
 
     @Override
-    public double calc(Creature creature, Optional<Double> base, Stats stat) {
+    public double calc(Creature creature, Optional<Double> base, Stat stat) {
         throwIfPresent(base);
 
         double baseValue = isPlayer(creature) ? creature.getActingPlayer().getTemplate().getBaseHpRegen(creature.getLevel()) : creature.getTemplate().getBaseHpReg();
-        baseValue *= creature.isRaid() ? Config.RAID_HP_REGEN_MULTIPLIER : Config.HP_REGEN_MULTIPLIER;
+        if(creature.isRaid()) {
+            baseValue *=  Config.RAID_HP_REGEN_MULTIPLIER;
+        }
 
         if (Config.CHAMPION_ENABLE && creature.isChampion()) {
             baseValue *= Config.CHAMPION_HP_REGEN;
@@ -78,9 +79,9 @@ public class RegenHPFinalizer implements IStatsFunction {
                 final int posChIndex = zone == null ? -1 : zone.getResidenceId();
                 final int clanHallIndex = player.getClan().getHideoutId();
                 if ((clanHallIndex > 0) && (clanHallIndex == posChIndex)) {
-                    final AbstractResidence residense = ClanHallData.getInstance().getClanHallById(player.getClan().getHideoutId());
+                    final AbstractResidence residense = ClanHallManager.getInstance().getClanHallById(player.getClan().getHideoutId());
                     if (residense != null) {
-                        final ResidenceFunction func = residense.getFunction(ResidenceFunctionType.HP_REGEN);
+                        final ResidenceFunctionData func = residense.getFunction(ResidenceFunctionType.HP_REGEN);
                         if (func != null) {
                             baseValue *= func.getValue();
                         }
@@ -95,9 +96,9 @@ public class RegenHPFinalizer implements IStatsFunction {
                 if ((castleIndex > 0) && (castleIndex == posCastleIndex)) {
                     final Castle castle = CastleManager.getInstance().getCastleById(player.getClan().getCastleId());
                     if (castle != null) {
-                        final CastleFunction func = castle.getCastleFunction(Castle.FUNC_RESTORE_HP);
+                        var func = castle.getCastleFunction(Castle.FUNC_RESTORE_HP);
                         if (func != null) {
-                            baseValue *= (func.getLvl() / 100);
+                            baseValue *= (func.getLevel() / 100f);
                         }
                     }
                 }
@@ -112,7 +113,7 @@ public class RegenHPFinalizer implements IStatsFunction {
                     if (fort != null) {
                         final FortFunction func = fort.getFortFunction(Fort.FUNC_RESTORE_HP);
                         if (func != null) {
-                            baseValue *= (func.getLvl() / 100);
+                            baseValue *= (func.getLvl() / 100f);
                         }
                     }
                 }
@@ -140,6 +141,6 @@ public class RegenHPFinalizer implements IStatsFunction {
             baseValue = ((Pet) creature).getPetLevelData().getPetRegenHP() * Config.PET_HP_REGEN_MULTIPLIER;
         }
 
-        return Stats.defaultValue(creature, stat, baseValue);
+        return Stat.defaultValue(creature, stat, baseValue);
     }
 }

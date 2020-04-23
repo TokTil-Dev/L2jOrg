@@ -84,7 +84,7 @@ public class Seed implements IItemHandler
 		}
 		
 		final Castle taxCastle = target.getTaxCastle();
-		if ((taxCastle == null) || (seed.getCastleId() != taxCastle.getResidenceId()))
+		if ((taxCastle == null) || (seed.getCastleId() != taxCastle.getId()))
 		{
 			playable.sendPacket(SystemMessageId.THIS_SEED_MAY_NOT_BE_SOWN_HERE);
 			return false;
@@ -93,7 +93,7 @@ public class Seed implements IItemHandler
 		final Player activeChar = playable.getActingPlayer();
 		target.setSeeded(seed, activeChar);
 		
-		final List<ItemSkillHolder> skills = item.getItem().getSkills(ItemSkillType.NORMAL);
+		final List<ItemSkillHolder> skills = item.getSkills(ItemSkillType.NORMAL);
 		if (skills != null)
 		{
 			skills.forEach(holder -> activeChar.useMagic(holder.getSkill(), item, false, false));

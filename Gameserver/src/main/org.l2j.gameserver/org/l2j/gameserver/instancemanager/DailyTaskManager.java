@@ -2,14 +2,15 @@ package org.l2j.gameserver.instancemanager;
 
 import org.l2j.commons.database.DatabaseFactory;
 import org.l2j.gameserver.Config;
+import org.l2j.gameserver.data.database.RankManager;
+import org.l2j.gameserver.data.database.dao.PlayerVariablesDAO;
 import org.l2j.gameserver.data.sql.impl.ClanTable;
 import org.l2j.gameserver.engine.mission.MissionData;
 import org.l2j.gameserver.engine.vip.VipEngine;
 import org.l2j.gameserver.model.Clan;
 import org.l2j.gameserver.model.ClanMember;
-import org.l2j.gameserver.world.World;
 import org.l2j.gameserver.model.actor.instance.Player;
-import org.l2j.gameserver.model.actor.stat.PcStat;
+import org.l2j.gameserver.model.actor.stat.PlayerStats;
 import org.l2j.gameserver.model.base.SubClass;
 import org.l2j.gameserver.model.eventengine.AbstractEvent;
 import org.l2j.gameserver.model.eventengine.AbstractEventManager;
@@ -19,6 +20,8 @@ import org.l2j.gameserver.model.olympiad.Olympiad;
 import org.l2j.gameserver.model.variables.PlayerVariables;
 import org.l2j.gameserver.network.serverpackets.ExVoteSystemInfo;
 import org.l2j.gameserver.network.serverpackets.ExWorldChatCnt;
+import org.l2j.gameserver.settings.ChatSettings;
+import org.l2j.gameserver.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +31,8 @@ import java.util.Collections;
 import java.util.List;
 
 import static java.util.Objects.nonNull;
+import static org.l2j.commons.configuration.Configurator.getSettings;
+import static org.l2j.commons.database.DatabaseAccess.getDAO;
 
 /**
  * @author UnAfraid
@@ -52,6 +57,8 @@ public class DailyTaskManager extends AbstractEventManager<AbstractEvent<?>> {
         resetWorldChatPoints();
         resetTrainingCamp();
         resetVipTierExpired();
+        resetRankers();
+        resetRevengeData();
     }
 
     @ScheduleTarget
@@ -86,21 +93,21 @@ public class DailyTaskManager extends AbstractEventManager<AbstractEvent<?>> {
         }
 
         for (Player player : World.getInstance().getPlayers()) {
-            player.setVitalityPoints(PcStat.MAX_VITALITY_POINTS, false);
+            player.setVitalityPoints(PlayerStats.MAX_VITALITY_POINTS, false);
 
             for (SubClass subclass : player.getSubClasses().values()) {
-                subclass.setVitalityPoints(PcStat.MAX_VITALITY_POINTS);
+                subclass.setVitalityPoints(PlayerStats.MAX_VITALITY_POINTS);
             }
         }
 
         try (Connection con = DatabaseFactory.getInstance().getConnection()) {
             try (PreparedStatement st = con.prepareStatement("UPDATE character_subclasses SET vitality_points = ?")) {
-                st.setInt(1, PcStat.MAX_VITALITY_POINTS);
+                st.setInt(1, PlayerStats.MAX_VITALITY_POINTS);
                 st.execute();
             }
 
             try (PreparedStatement st = con.prepareStatement("UPDATE characters SET vitality_points = ?")) {
-                st.setInt(1, PcStat.MAX_VITALITY_POINTS);
+                st.setInt(1, PlayerStats.MAX_VITALITY_POINTS);
                 st.execute();
             }
         } catch (Exception e) {
@@ -149,8 +156,13 @@ public class DailyTaskManager extends AbstractEventManager<AbstractEvent<?>> {
         LOGGER.info("Daily skill reuse cleaned.");
     }
 
+    private void resetRevengeData() {
+        getDAO(PlayerVariablesDAO.class).resetRevengeData();
+        World.getInstance().forEachPlayer(player -> player.resetRevengeData());
+    }
+
     private void resetWorldChatPoints() {
-        if (!Config.ENABLE_WORLD_CHAT) {
+        if (!getSettings(ChatSettings.class).worldChatEnabled()) {
             return;
         }
 
@@ -230,6 +242,10 @@ public class DailyTaskManager extends AbstractEventManager<AbstractEvent<?>> {
             VipEngine.getInstance().checkVipTierExpiration(player);
         });
         LOGGER.info("VIP expiration time has been checked.");
+    }
+
+    private void resetRankers() {
+        RankManager.getInstance().updateRankers();
     }
 
     private void resetDailyMissionRewards() {

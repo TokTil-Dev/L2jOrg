@@ -1,10 +1,11 @@
 package org.l2j.gameserver.network.clientpackets;
 
 import org.l2j.gameserver.Config;
-import org.l2j.gameserver.datatables.ItemTable;
+import org.l2j.gameserver.engine.item.ItemEngine;
 import org.l2j.gameserver.enums.ItemLocation;
 import org.l2j.gameserver.enums.PrivateStoreType;
 import org.l2j.gameserver.instancemanager.MailManager;
+import org.l2j.gameserver.settings.GeneralSettings;
 import org.l2j.gameserver.world.World;
 import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.model.entity.Message;
@@ -17,6 +18,8 @@ import org.l2j.gameserver.network.serverpackets.ExChangePostState;
 import org.l2j.gameserver.network.serverpackets.InventoryUpdate;
 import org.l2j.gameserver.network.serverpackets.SystemMessage;
 import org.l2j.gameserver.util.GameUtils;
+
+import static org.l2j.commons.configuration.Configurator.getSettings;
 
 /**
  * @author Migi, DS
@@ -31,7 +34,7 @@ public final class RequestPostAttachment extends ClientPacket {
 
     @Override
     public void runImpl() {
-        if (!Config.ALLOW_MAIL || !Config.ALLOW_ATTACHMENTS) {
+        if (!getSettings(GeneralSettings.class).allowMail() || !Config.ALLOW_ATTACHMENTS) {
             return;
         }
 
@@ -75,7 +78,7 @@ public final class RequestPostAttachment extends ClientPacket {
         }
 
         if (msg.getReceiverId() != activeChar.getObjectId()) {
-            GameUtils.handleIllegalPlayerAction(activeChar, "Player " + activeChar.getName() + " tried to get not own attachment!", Config.DEFAULT_PUNISH);
+            GameUtils.handleIllegalPlayerAction(activeChar, "Player " + activeChar.getName() + " tried to get not own attachment!");
             return;
         }
 
@@ -98,21 +101,21 @@ public final class RequestPostAttachment extends ClientPacket {
 
             // Calculate needed slots
             if (item.getOwnerId() != msg.getSenderId()) {
-                GameUtils.handleIllegalPlayerAction(activeChar, "Player " + activeChar.getName() + " tried to get wrong item (ownerId != senderId) from attachment!", Config.DEFAULT_PUNISH);
+                GameUtils.handleIllegalPlayerAction(activeChar, "Player " + activeChar.getName() + " tried to get wrong item (ownerId != senderId) from attachment!");
                 return;
             }
 
             if (item.getItemLocation() != ItemLocation.MAIL) {
-                GameUtils.handleIllegalPlayerAction(activeChar, "Player " + activeChar.getName() + " tried to get wrong item (Location != MAIL) from attachment!", Config.DEFAULT_PUNISH);
+                GameUtils.handleIllegalPlayerAction(activeChar, "Player " + activeChar.getName() + " tried to get wrong item (Location != MAIL) from attachment!");
                 return;
             }
 
             if (item.getLocationSlot() != msg.getId()) {
-                GameUtils.handleIllegalPlayerAction(activeChar, "Player " + activeChar.getName() + " tried to get items from different attachment!", Config.DEFAULT_PUNISH);
+                GameUtils.handleIllegalPlayerAction(activeChar, "Player " + activeChar.getName() + " tried to get items from different attachment!");
                 return;
             }
 
-            weight += item.getCount() * item.getItem().getWeight();
+            weight += item.getCount() * item.getTemplate().getWeight();
             if (!item.isStackable()) {
                 slots += item.getCount();
             } else if (activeChar.getInventory().getItemByItemId(item.getId()) == null) {
@@ -146,7 +149,7 @@ public final class RequestPostAttachment extends ClientPacket {
             }
 
             if (item.getOwnerId() != msg.getSenderId()) {
-                GameUtils.handleIllegalPlayerAction(activeChar, "Player " + activeChar.getName() + " tried to get items with owner != sender !", Config.DEFAULT_PUNISH);
+                GameUtils.handleIllegalPlayerAction(activeChar, "Player " + activeChar.getName() + " tried to get item with owner != sender !");
                 return;
             }
 
@@ -188,7 +191,7 @@ public final class RequestPostAttachment extends ClientPacket {
                 sm.addString(activeChar.getName());
                 sender.sendPacket(sm);
             } else {
-                final Item paidAdena = ItemTable.getInstance().createItem("PayMail", CommonItem.ADENA, adena, activeChar, null);
+                final Item paidAdena = ItemEngine.getInstance().createItem("PayMail", CommonItem.ADENA, adena, activeChar, null);
                 paidAdena.setOwnerId(msg.getSenderId());
                 paidAdena.setItemLocation(ItemLocation.INVENTORY);
                 paidAdena.updateDatabase(true);

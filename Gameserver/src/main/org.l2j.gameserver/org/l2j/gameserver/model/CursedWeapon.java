@@ -4,17 +4,17 @@ import org.l2j.commons.database.DatabaseFactory;
 import org.l2j.commons.threading.ThreadPool;
 import org.l2j.commons.util.Rnd;
 import org.l2j.gameserver.Config;
-import org.l2j.gameserver.data.xml.impl.SkillData;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
 import org.l2j.gameserver.instancemanager.CursedWeaponsManager;
 import org.l2j.gameserver.model.Party.MessageType;
 import org.l2j.gameserver.model.actor.Attackable;
 import org.l2j.gameserver.model.actor.Creature;
 import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.model.interfaces.INamable;
-import org.l2j.gameserver.model.items.ItemTemplate;
+import org.l2j.gameserver.model.items.BodyPart;
 import org.l2j.gameserver.model.items.instance.Item;
 import org.l2j.gameserver.model.skills.CommonSkill;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.network.SystemMessageId;
 import org.l2j.gameserver.network.serverpackets.*;
 import org.l2j.gameserver.util.Broadcast;
@@ -60,7 +60,7 @@ public class CursedWeapon implements INamable {
         _name = name;
         _itemId = itemId;
         _skillId = skillId;
-        _skillMaxLevel = SkillData.getInstance().getMaxLevel(_skillId);
+        _skillMaxLevel = SkillEngine.getInstance().getMaxLevel(_skillId);
     }
 
     public void endOfLife() {
@@ -77,7 +77,7 @@ public class CursedWeapon implements INamable {
                 removeSkill();
 
                 // Remove
-                _player.getInventory().unEquipItemInBodySlot(ItemTemplate.SLOT_LR_HAND);
+                _player.getInventory().unEquipItemInBodySlot(BodyPart.TWO_HAND);
                 _player.storeMe();
 
                 // Destroy
@@ -248,7 +248,7 @@ public class CursedWeapon implements INamable {
             level = _skillMaxLevel;
         }
 
-        final Skill skill = SkillData.getInstance().getSkill(_skillId, level);
+        final Skill skill = SkillEngine.getInstance().getSkill(_skillId, level);
         _player.addSkill(skill, false);
 
         // Void Burst, Void Flow

@@ -1,16 +1,21 @@
 package org.l2j.commons.configuration;
 
+import io.github.joealisson.primitive.IntSet;
+import org.l2j.commons.util.StreamUtil;
 import org.l2j.commons.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.nio.file.Files.newBufferedReader;
+import static java.util.Arrays.stream;
 import static java.util.Objects.isNull;
 import static org.l2j.commons.util.Util.*;
 
@@ -70,7 +75,11 @@ public final class SettingsFile extends Properties {
         if(isNullOrEmpty(value)) {
             return STRING_ARRAY_EMPTY;
         }
-        return value.split(DEFAULT_DELIMITER);
+        var values = value.split(DEFAULT_DELIMITER);
+        for (int i = 0; i < values.length; i++) {
+            values[i] = values[i].trim();
+        }
+        return values;
     }
 
     public Map<Integer, Integer> getIntegerMap(String key, String entryDelimiter, String valueDelimiter) {
@@ -106,6 +115,10 @@ public final class SettingsFile extends Properties {
         return list;
     }
 
+    public IntSet getIntSet(String key, String delimiter) {
+        return StreamUtil.collectToSet(stream(getProperty(key).split(delimiter)).filter(Util::isInteger).mapToInt(Integer::parseInt));
+    }
+
     public double getDouble(String key, double defaultValue) {
         try {
             return Double.parseDouble(getProperty(key));
@@ -127,23 +140,16 @@ public final class SettingsFile extends Properties {
     public int[] getIntegerArray(String key, String delimiter) {
         var property = getProperty(key);
         if(isNullOrEmpty(property)) {
-            return  INT_ARRAY_EMPTY;
+            return INT_ARRAY_EMPTY;
         }
         var values = property.split(delimiter);
         int[] array = new int[values.length];
         int index = 0;
         for (String v : values) {
-
-            if (isNullOrEmpty(v)) {
+            if (!isInteger(v)) {
                 continue;
             }
-
-            try {
-                int value = Integer.parseInt(v);
-                array[index++] = value;
-            } catch (Exception e) {
-                logger.warn("Error getting property {} : {}", key, e.getLocalizedMessage());
-            }
+            array[index++] = Integer.parseInt(v);
         }
         return array;
     }
@@ -186,5 +192,26 @@ public final class SettingsFile extends Properties {
             logger.warn("Unknown enum constant {} of type {}", key, enumClass);
         }
         return defaultValue;
+    }
+
+    public <T extends Enum<T>> Set<T> getEnumSet(String key, Class<T> enumClass, Set<T> defaultValue) {
+        String value;
+        if(isNullOrEmpty(value = getProperty(key)) || isNull(enumClass)) {
+            return defaultValue;
+        }
+        var enums = value.split(DEFAULT_DELIMITER);
+        var result = EnumSet.noneOf(enumClass);
+        for (String enumName : enums) {
+            try{
+                result.add(Enum.valueOf(enumClass, enumName.trim()));
+            } catch (Exception e) {
+                logger.warn("Unknown enum constant {} of type {}", enumName, enumClass);
+            }
+        }
+        return result;
+    }
+
+    public Duration getDuration(String key, int defaultValue) {
+        return Duration.of(getInteger(key, defaultValue), ChronoUnit.SECONDS);
     }
 }

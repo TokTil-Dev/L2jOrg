@@ -1,25 +1,25 @@
 package org.l2j.gameserver.model.actor;
 
 import org.l2j.commons.threading.ThreadPool;
-import org.l2j.gameserver.world.WorldTimeController;
 import org.l2j.gameserver.ai.CtrlIntention;
 import org.l2j.gameserver.enums.InstanceType;
-import org.l2j.gameserver.world.MapRegionManager;
-import org.l2j.gameserver.world.zone.ZoneManager;
 import org.l2j.gameserver.model.Location;
 import org.l2j.gameserver.model.TeleportWhereType;
 import org.l2j.gameserver.model.VehiclePathPoint;
-import org.l2j.gameserver.world.World;
 import org.l2j.gameserver.model.actor.instance.Player;
-import org.l2j.gameserver.model.actor.stat.VehicleStat;
+import org.l2j.gameserver.model.actor.stat.VehicleStats;
 import org.l2j.gameserver.model.actor.templates.CreatureTemplate;
 import org.l2j.gameserver.model.interfaces.ILocational;
 import org.l2j.gameserver.model.items.Weapon;
 import org.l2j.gameserver.model.items.instance.Item;
-import org.l2j.gameserver.world.zone.ZoneRegion;
 import org.l2j.gameserver.network.SystemMessageId;
 import org.l2j.gameserver.network.serverpackets.InventoryUpdate;
 import org.l2j.gameserver.network.serverpackets.ServerPacket;
+import org.l2j.gameserver.world.MapRegionManager;
+import org.l2j.gameserver.world.World;
+import org.l2j.gameserver.world.WorldTimeController;
+import org.l2j.gameserver.world.zone.ZoneManager;
+import org.l2j.gameserver.world.zone.ZoneRegion;
 
 import java.util.Iterator;
 import java.util.Set;
@@ -49,10 +49,6 @@ public abstract class Vehicle extends Creature {
         return false;
     }
 
-    public boolean isAirShip() {
-        return false;
-    }
-
     public boolean canBeControlled() {
         return _engine == null;
     }
@@ -74,10 +70,10 @@ public abstract class Vehicle extends Creature {
         if ((_currentPath != null) && (_currentPath.length > 0)) {
             final VehiclePathPoint point = _currentPath[0];
             if (point.getMoveSpeed() > 0) {
-                getStat().setMoveSpeed(point.getMoveSpeed());
+                getStats().setMoveSpeed(point.getMoveSpeed());
             }
             if (point.getRotationSpeed() > 0) {
-                getStat().setRotationSpeed(point.getRotationSpeed());
+                getStats().setRotationSpeed(point.getRotationSpeed());
             }
 
             getAI().setIntention(CtrlIntention.AI_INTENTION_MOVE_TO, new Location(point.getX(), point.getY(), point.getZ(), 0));
@@ -101,10 +97,10 @@ public abstract class Vehicle extends Creature {
                         _currentPath = null;
                     } else {
                         if (point.getMoveSpeed() > 0) {
-                            getStat().setMoveSpeed(point.getMoveSpeed());
+                            getStats().setMoveSpeed(point.getMoveSpeed());
                         }
                         if (point.getRotationSpeed() > 0) {
-                            getStat().setRotationSpeed(point.getRotationSpeed());
+                            getStats().setRotationSpeed(point.getRotationSpeed());
                         }
 
                         final MoveData m = new MoveData();
@@ -137,13 +133,13 @@ public abstract class Vehicle extends Creature {
     }
 
     @Override
-    public VehicleStat getStat() {
-        return (VehicleStat) super.getStat();
+    public VehicleStats getStats() {
+        return (VehicleStats) super.getStats();
     }
 
     @Override
     public void initCharStat() {
-        setStat(new VehicleStat(this));
+        setStat(new VehicleStats(this));
     }
 
     public boolean isInDock() {

@@ -1,6 +1,6 @@
 package org.l2j.gameserver.model;
 
-import org.l2j.gameserver.data.xml.impl.SkillData;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
 import org.l2j.gameserver.model.holders.SkillHolder;
 
 import java.util.ArrayList;
@@ -163,7 +163,7 @@ public class PetData {
                 continue;
             }
             found = true;
-            if (temp.getSkillLevel() == 0) {
+            if (temp.getLevel() == 0) {
                 if (petLvl < 70) {
                     lvl = (petLvl / 10);
                     if (lvl <= 0) {
@@ -174,14 +174,14 @@ public class PetData {
                 }
 
                 // formula usable for skill that have 10 or more skill levels
-                final int maxLvl = SkillData.getInstance().getMaxLevel(temp.getSkillId());
+                final int maxLvl = SkillEngine.getInstance().getMaxLevel(temp.getSkillId());
                 if (lvl > maxLvl) {
                     lvl = maxLvl;
                 }
                 break;
             } else if (temp.getMinLevel() <= petLvl) {
-                if (temp.getSkillLevel() > lvl) {
-                    lvl = temp.getSkillLevel();
+                if (temp.getLevel() > lvl) {
+                    lvl = temp.getLevel();
                 }
             }
         }

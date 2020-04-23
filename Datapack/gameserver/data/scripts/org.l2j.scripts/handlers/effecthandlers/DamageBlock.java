@@ -1,21 +1,6 @@
-/*
- * This file is part of the L2J Mobius project.
- * 
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
 package handlers.effecthandlers;
 
+import org.l2j.gameserver.engine.skill.api.SkillEffectFactory;
 import org.l2j.gameserver.model.StatsSet;
 import org.l2j.gameserver.model.effects.AbstractEffect;
 import org.l2j.gameserver.model.effects.EffectFlag;
@@ -24,22 +9,39 @@ import org.l2j.gameserver.model.effects.EffectFlag;
  * Effect that blocks damage and heals to HP/MP. <BR>
  * Regeneration or DOT shouldn't be blocked, Vampiric Rage and Balance Life as well.
  * @author Nik
+ * @author JoeAlisson
  */
-public final class DamageBlock extends AbstractEffect
-{
-	private final boolean _blockHp;
-	private final boolean _blockMp;
+public final class DamageBlock extends AbstractEffect {
+	private final boolean blockHp;
+	private final boolean blockMp;
 	
-	public DamageBlock(StatsSet params)
-	{
-		final String type = params.getString("type", null);
-		_blockHp = type.equalsIgnoreCase("BLOCK_HP");
-		_blockMp = type.equalsIgnoreCase("BLOCK_MP");
+	private DamageBlock(StatsSet params) {
+		blockHp = params.getBoolean("block-hp");
+		blockMp = params.getBoolean("block-mp");
 	}
 	
 	@Override
-	public long getEffectFlags()
-	{
-		return _blockHp ? EffectFlag.HP_BLOCK.getMask() : (_blockMp ? EffectFlag.MP_BLOCK.getMask() : EffectFlag.NONE.getMask());
+	public long getEffectFlags() {
+		int mask =0;
+		if(blockHp) {
+			mask |= EffectFlag.HP_BLOCK.getMask();
+		}
+		if(blockMp) {
+			mask |= EffectFlag.MP_BLOCK.getMask();
+		}
+		return mask;
+	}
+
+	public static class Factory implements SkillEffectFactory {
+
+		@Override
+		public AbstractEffect create(StatsSet data) {
+			return new DamageBlock(data);
+		}
+
+		@Override
+		public String effectName() {
+			return "damage-block";
+		}
 	}
 }

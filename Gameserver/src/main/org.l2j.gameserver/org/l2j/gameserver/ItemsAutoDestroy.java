@@ -4,10 +4,13 @@ import org.l2j.commons.threading.ThreadPool;
 import org.l2j.gameserver.enums.ItemLocation;
 import org.l2j.gameserver.instancemanager.ItemsOnGroundManager;
 import org.l2j.gameserver.model.items.instance.Item;
+import org.l2j.gameserver.settings.GeneralSettings;
 
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+
+import static org.l2j.commons.configuration.Configurator.getSettings;
 
 public final class ItemsAutoDestroy {
     private final List<Item> _items = new LinkedList<>();
@@ -33,19 +36,23 @@ public final class ItemsAutoDestroy {
             if ((item.getDropTime() == 0) || (item.getItemLocation() != ItemLocation.VOID)) {
                 itemIterator.remove();
             } else {
-                final long autoDestroyTime;
-                if (item.getItem().getAutoDestroyTime() > 0) {
-                    autoDestroyTime = item.getItem().getAutoDestroyTime();
-                } else if (item.getItem().hasExImmediateEffect()) {
-                    autoDestroyTime = Config.HERB_AUTO_DESTROY_TIME;
+                var generalSettings = getSettings(GeneralSettings.class);
+                long autoDestroyTime;
+
+                if (item.getTemplate().getAutoDestroyTime() > 0) {
+                    autoDestroyTime = item.getTemplate().getAutoDestroyTime();
+                } else if (item.getTemplate().hasExImmediateEffect()) {
+                    autoDestroyTime = generalSettings.autoDestroyHerbTime();
                 } else {
-                    autoDestroyTime = ((Config.AUTODESTROY_ITEM_AFTER == 0) ? 3600000 : Config.AUTODESTROY_ITEM_AFTER * 1000);
+                    if( (autoDestroyTime = generalSettings.autoDestroyItemTime()) == 0) {
+                        autoDestroyTime = 3600000;
+                    }
                 }
 
                 if ((curtime - item.getDropTime()) > autoDestroyTime) {
                     item.decayMe();
                     itemIterator.remove();
-                    if (Config.SAVE_DROPPED_ITEM) {
+                    if (generalSettings.saveDroppedItems()) {
                         ItemsOnGroundManager.getInstance().removeObject(item);
                     }
                 }

@@ -1,9 +1,9 @@
 package org.l2j.gameserver.network.clientpackets;
 
 import org.l2j.gameserver.Config;
-import org.l2j.gameserver.datatables.ItemTable;
+import org.l2j.gameserver.engine.item.ItemEngine;
 import org.l2j.gameserver.instancemanager.CastleManorManager;
-import org.l2j.gameserver.model.CropProcure;
+import org.l2j.gameserver.data.database.data.CropProcure;
 import org.l2j.gameserver.model.actor.Npc;
 import org.l2j.gameserver.model.actor.instance.Merchant;
 import org.l2j.gameserver.model.actor.instance.Player;
@@ -70,7 +70,7 @@ public class RequestProcureCropList extends ClientPacket {
             return;
         }
 
-        final int castleId = manager.getCastle().getResidenceId();
+        final int castleId = manager.getCastle().getId();
         if (manager.getParameters().getInt("manor_id", -1) != castleId) {
             client.sendPacket(ActionFailed.STATIC_PACKET);
             return;
@@ -91,7 +91,7 @@ public class RequestProcureCropList extends ClientPacket {
                 return;
             }
 
-            final ItemTemplate template = ItemTable.getInstance().getTemplate(i.getRewardId());
+            final ItemTemplate template = ItemEngine.getInstance().getTemplate(i.getRewardId());
             weight += (i.getCount() * template.getWeight());
 
             if (!template.isStackable()) {
@@ -110,12 +110,12 @@ public class RequestProcureCropList extends ClientPacket {
         }
 
         // Used when Config.ALT_MANOR_SAVE_ALL_ACTIONS == true
-        final int updateListSize = Config.ALT_MANOR_SAVE_ALL_ACTIONS ? _items.size() : 0;
+        final int updateListSize =  0;
         final List<CropProcure> updateList = new ArrayList<>(updateListSize);
 
         // Proceed the purchase
         for (CropHolder i : _items) {
-            final long rewardPrice = ItemTable.getInstance().getTemplate(i.getRewardId()).getReferencePrice();
+            final long rewardPrice = ItemEngine.getInstance().getTemplate(i.getRewardId()).getReferencePrice();
             if (rewardPrice == 0) {
                 continue;
             }
@@ -147,14 +147,6 @@ public class RequestProcureCropList extends ClientPacket {
                 continue;
             }
             player.addItem("Manor", i.getRewardId(), rewardItemCount, manager, true);
-
-            if (Config.ALT_MANOR_SAVE_ALL_ACTIONS) {
-                updateList.add(cp);
-            }
-        }
-
-        if (Config.ALT_MANOR_SAVE_ALL_ACTIONS) {
-            manor.updateCurrentProcure(castleId, updateList);
         }
     }
 
@@ -185,7 +177,7 @@ public class RequestProcureCropList extends ClientPacket {
 
         public final int getRewardId() {
             if (_rewardId == 0) {
-                _rewardId = CastleManorManager.getInstance().getSeedByCrop(_cp.getId()).getReward(_cp.getReward());
+                _rewardId = CastleManorManager.getInstance().getSeedByCrop(_cp.getSeedId()).getReward(_cp.getReward());
             }
             return _rewardId;
         }

@@ -1,8 +1,8 @@
 package org.l2j.gameserver.handler;
 
-import org.l2j.gameserver.model.StatsSet;
-import org.l2j.gameserver.model.skills.ISkillCondition;
-import org.l2j.gameserver.engine.scripting.ScriptEngineManager;
+import org.l2j.gameserver.engine.skill.api.SkillCondition;
+import org.l2j.gameserver.engine.skill.api.SkillConditionFactory;
+import org.w3c.dom.Node;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -10,31 +10,24 @@ import java.util.function.Function;
 
 /**
  * @author NosBit
+ * @author JoeAlisson
  */
 public final class SkillConditionHandler {
-    private final Map<String, Function<StatsSet, ISkillCondition>> _skillConditionHandlerFactories = new HashMap<>();
+    private final Map<String, Function<Node, SkillCondition>> skillConditionHandlerFactories = new HashMap<>();
 
     private SkillConditionHandler() {
     }
 
-    public void registerHandler(String name, Function<StatsSet, ISkillCondition> handlerFactory) {
-        _skillConditionHandlerFactories.put(name, handlerFactory);
+    public void registerFactory(SkillConditionFactory skillConditionFactory) {
+        skillConditionHandlerFactories.put(skillConditionFactory.conditionName(), skillConditionFactory::create);
     }
 
-    public Function<StatsSet, ISkillCondition> getHandlerFactory(String name) {
-        return _skillConditionHandlerFactories.get(name);
+    public Function<Node, SkillCondition> getHandlerFactory(String name) {
+        return skillConditionHandlerFactories.get(name);
     }
 
     public int size() {
-        return _skillConditionHandlerFactories.size();
-    }
-
-    public void executeScript() {
-        try {
-            ScriptEngineManager.getInstance().executeSkillConditionMasterHandler();
-        } catch (Exception e) {
-            throw new Error("Problems while running SkillMasterHandler", e);
-        }
+        return skillConditionHandlerFactories.size();
     }
 
     public static SkillConditionHandler getInstance() {

@@ -1,16 +1,14 @@
 package org.l2j.gameserver.network.serverpackets.friend;
 
-import org.l2j.gameserver.data.database.dao.CharacterDAO;
+import org.l2j.gameserver.data.database.dao.PlayerDAO;
 import org.l2j.gameserver.data.sql.impl.ClanTable;
 import org.l2j.gameserver.data.sql.impl.PlayerNameTable;
 import org.l2j.gameserver.model.Clan;
-import org.l2j.gameserver.world.World;
 import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.network.GameClient;
 import org.l2j.gameserver.network.ServerPacketId;
 import org.l2j.gameserver.network.serverpackets.ServerPacket;
-
-import java.util.Calendar;
+import org.l2j.gameserver.world.World;
 
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
@@ -33,7 +31,7 @@ public class ExFriendDetailInfo extends ServerPacket {
 
         friend = World.getInstance().findPlayer(friendId);
         if(isNull(friend)) {
-            info = new FriendInfo(friendId, getDAO(CharacterDAO.class).findFriendData(friendId));
+            info = new FriendInfo(friendId, getDAO(PlayerDAO.class).findFriendData(friendId));
         }
     }
 
@@ -63,9 +61,9 @@ public class ExFriendDetailInfo extends ServerPacket {
         writeInt(friend.getAllyCrestId());
         writeString(friend.getClan() != null ? friend.getClan().getAllyName() : "");
 
-        final Calendar createDate = friend.getCreateDate();
-        writeByte((byte) (createDate.get(Calendar.MONTH) + 1));
-        writeByte((byte) createDate.get(Calendar.DAY_OF_MONTH));
+        var createDate = friend.getCreateDate();
+        writeByte(createDate.getMonthValue());
+        writeByte(createDate.getDayOfMonth());
 
         writeInt(-1);
         writeString(""); //TODO  memo

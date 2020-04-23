@@ -1,11 +1,13 @@
 package org.l2j.gameserver.model.skills;
 
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.model.holders.SkillHolder;
 
 /**
  * An Enum to hold some important references to commonly used skills
  *
  * @author DrHouse
+ * @author JoeAlisson
  */
 public enum CommonSkill {
     CREATE_DWARVEN(172, 1),
@@ -16,7 +18,13 @@ public enum CommonSkill {
     CRYSTALLIZE(248, 1),
     SHADOW_SENSE_ID(294, 1),
     STRIDER_SIEGE_ASSAULT(325, 1),
+    BUILD_ADVANCED_HEADQUARTERS(326, 1),
+    SHINE_SIDE(397, 1),
+    SHADOW_SIDE(398, 1),
     ONYX_BEAST_TRANSFORMATION(617, 1),
+    OUTPOST_CONSTRUCTION(844, 1),
+    OUTPOST_DEMOLITION(845, 1),
+    HIDE(922, 4),
     CREATE_COMMON(1320, 1),
     DIVINE_INSPIRATION(1405, 1),
     LARGE_FIREWORK(2025, 1),
@@ -43,7 +51,23 @@ public enum CommonSkill {
     ABILITY_OF_DARKNESS(19033, 1),
     IMPRIT_OF_LIGHT(19034, 1),
     IMPRIT_OF_DARKNESS(19035, 1),
-    BOT_REPORT_STATUS(55031, 1);
+    SHINE_MASTERY(45178, 1),
+    SHADOW_MASTERY(45179, 1),
+    BOT_REPORT_STATUS(55031, 1),
+    RANKER_FIRST_CLASS(60003, 1),
+    RANKER_SECOND_CLASS(60004, 1),
+    RANKER_THIRD_CLASS(60005, 1),
+    RANKER_HUMAN(60006, 1),
+    RANKER_ELF(60007, 1),
+    RANKER_DARK_ELF(60008, 1),
+    RANKER_ORC(60009, 1),
+    RANKER_DWARF(60010, 1),
+    RANKER_JIN_KAMAEL(60011, 1),
+    RANKER_BENEFIT_I(60012, 1),
+    RANKER_BENEFIT_II(60013, 1),
+    RANKER_BENEFIT_III(60014, 1),
+    RANKER_RACE_BENEFIT(60015, 1),
+    TELEPORT(60018, 1);
 
     private final SkillHolder _holder;
 
@@ -56,7 +80,7 @@ public enum CommonSkill {
     }
 
     public int getLevel() {
-        return _holder.getSkillLevel();
+        return _holder.getLevel();
     }
 
     public Skill getSkill() {

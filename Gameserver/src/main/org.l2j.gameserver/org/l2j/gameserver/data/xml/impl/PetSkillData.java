@@ -1,5 +1,6 @@
 package org.l2j.gameserver.data.xml.impl;
 
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
 import org.l2j.gameserver.model.actor.Summon;
 import org.l2j.gameserver.model.holders.SkillHolder;
 import org.l2j.gameserver.settings.ServerSettings;
@@ -25,7 +26,6 @@ public class PetSkillData extends GameXmlReader {
     private final Map<Integer, Map<Long, SkillHolder>> _skillTrees = new HashMap<>();
 
     private PetSkillData() {
-        load();
     }
 
     @Override
@@ -54,8 +54,8 @@ public class PetSkillData extends GameXmlReader {
 
                         Map<Long, SkillHolder> skillTree = _skillTrees.computeIfAbsent(npcId, k -> new HashMap<>());
 
-                        if (SkillData.getInstance().getSkill(skillId, skillLvl == 0 ? 1 : skillLvl) != null) {
-                            skillTree.put(SkillData.getSkillHashCode(skillId, skillLvl + 1), new SkillHolder(skillId, skillLvl));
+                        if (SkillEngine.getInstance().getSkill(skillId, skillLvl == 0 ? 1 : skillLvl) != null) {
+                            skillTree.put(SkillEngine.skillHashCode(skillId, skillLvl + 1), new SkillHolder(skillId, skillLvl));
                         } else {
                             LOGGER.info("Could not find skill with id {}, level {} for NPC  {}", skillId, skillLvl, npcId);
                         }
@@ -76,7 +76,7 @@ public class PetSkillData extends GameXmlReader {
             if (skillHolder.getSkillId() != skillId) {
                 continue;
             }
-            if (skillHolder.getSkillLevel() == 0) {
+            if (skillHolder.getLevel() == 0) {
                 if (pet.getLevel() < 70) {
                     lvl = pet.getLevel() / 10;
                     if (lvl <= 0) {
@@ -87,19 +87,23 @@ public class PetSkillData extends GameXmlReader {
                 }
 
                 // formula usable for skill that have 10 or more skill levels
-                final int maxLvl = SkillData.getInstance().getMaxLevel(skillHolder.getSkillId());
+                final int maxLvl = SkillEngine.getInstance().getMaxLevel(skillHolder.getSkillId());
                 if (lvl > maxLvl) {
                     lvl = maxLvl;
                 }
                 break;
             } else if (1 <= pet.getLevel()) {
-                if (skillHolder.getSkillLevel() > lvl) {
-                    lvl = skillHolder.getSkillLevel();
+                if (skillHolder.getLevel() > lvl) {
+                    lvl = skillHolder.getLevel();
                 }
             }
         }
 
         return lvl;
+    }
+
+    public static void init()  {
+        getInstance().load();
     }
 
     public static PetSkillData getInstance() {

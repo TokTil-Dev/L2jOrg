@@ -1,34 +1,37 @@
 package org.l2j.gameserver.model.items;
 
 import org.l2j.commons.util.Rnd;
-import org.l2j.commons.util.Util;
 import org.l2j.gameserver.enums.ItemSkillType;
-import org.l2j.gameserver.model.StatsSet;
-import org.l2j.gameserver.world.World;
 import org.l2j.gameserver.model.actor.Creature;
 import org.l2j.gameserver.model.actor.Npc;
 import org.l2j.gameserver.model.events.EventDispatcher;
 import org.l2j.gameserver.model.events.impl.character.npc.OnNpcSkillSee;
+import org.l2j.gameserver.model.items.type.CrystalType;
 import org.l2j.gameserver.model.items.type.WeaponType;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.model.stats.Formulas;
 import org.l2j.gameserver.network.SystemMessageId;
 import org.l2j.gameserver.network.serverpackets.SystemMessage;
+import org.l2j.gameserver.world.World;
 
+import static java.util.Objects.isNull;
+import static org.l2j.gameserver.util.GameUtils.constrain;
 import static org.l2j.gameserver.util.GameUtils.isPlayer;
 
 /**
  * This class is dedicated to the management of weapons.
+ *
+ * @author JoeAlisson
  */
-public final class Weapon extends ItemTemplate {
-    private WeaponType _type;
-    private boolean _isMagicWeapon;
-    private int _soulShotCount;
-    private int _spiritShotCount;
-    private int _mpConsume;
-    private int _baseAttackRadius;
-    private int _baseAttackAngle;
-    private int _changeWeaponId;
+public final class Weapon extends ItemTemplate implements EquipableItem {
+    private WeaponType type;
+    private boolean magic;
+    private int soulShot;
+    private int spiritShot;
+    private int manaConsume;
+    private int damageRadius;
+    private int attackangle;
+    private int changeWeapon;
 
     private int _reducedSoulshot;
     private int _reducedSoulshotChance;
@@ -36,50 +39,15 @@ public final class Weapon extends ItemTemplate {
     private int _reducedMpConsume;
     private int _reducedMpConsumeChance;
 
-    private boolean _isForceEquip;
-    private boolean _isAttackWeapon;
-    private boolean _useWeaponSkillsOnly;
+    private boolean isAttackWeapon;
+    private boolean useWeaponSkillsOnly;
 
-    /**
-     * Constructor for Weapon.
-     *
-     * @param set the StatsSet designating the set of couples (key,value) characterizing the weapon.
-     */
-    public Weapon(StatsSet set) {
-        super(set);
-    }
-
-    @Override
-    public void set(StatsSet set) {
-        super.set(set);
-        _type = WeaponType.valueOf(set.getString("weapon_type", "none").toUpperCase());
-        _type1 = ItemTemplate.TYPE1_WEAPON_RING_EARRING_NECKLACE;
-        _type2 = ItemTemplate.TYPE2_WEAPON;
-        _isMagicWeapon = set.getBoolean("is_magic_weapon", false);
-        _soulShotCount = set.getInt("soulshots", 0);
-        _spiritShotCount = set.getInt("spiritshots", 0);
-        _mpConsume = set.getInt("mp_consume", 0);
-        final String[] damageRange = set.getString("damage_range", "").split(";"); // 0?;0?;fan sector;base attack angle
-        if ((damageRange.length > 1) && Util.isInteger(damageRange[2]) && Util.isInteger(damageRange[3])) {
-            _baseAttackRadius = Integer.parseInt(damageRange[2]);
-            _baseAttackAngle = 360 - Integer.parseInt(damageRange[3]);
-        } else {
-            _baseAttackRadius = 40;
-            _baseAttackAngle = 240; // 360 - 120
-        }
-
-        final String[] reduced_soulshots = set.getString("reduced_soulshot", "").split(",");
-        _reducedSoulshotChance = (reduced_soulshots.length == 2) ? Integer.parseInt(reduced_soulshots[0]) : 0;
-        _reducedSoulshot = (reduced_soulshots.length == 2) ? Integer.parseInt(reduced_soulshots[1]) : 0;
-
-        final String[] reduced_mpconsume = set.getString("reduced_mp_consume", "").split(",");
-        _reducedMpConsumeChance = (reduced_mpconsume.length == 2) ? Integer.parseInt(reduced_mpconsume[0]) : 0;
-        _reducedMpConsume = (reduced_mpconsume.length == 2) ? Integer.parseInt(reduced_mpconsume[1]) : 0;
-
-        _changeWeaponId = set.getInt("change_weaponId", 0);
-        _isForceEquip = set.getBoolean("isForceEquip", false);
-        _isAttackWeapon = set.getBoolean("isAttackWeapon", true);
-        _useWeaponSkillsOnly = set.getBoolean("useWeaponSkillsOnly", false);
+    public Weapon(int id, String name, WeaponType type, BodyPart bodyPart) {
+        super(id, name);
+        this.type = type;
+        this.bodyPart = bodyPart;
+        type1 = ItemTemplate.TYPE1_WEAPON_RING_EARRING_NECKLACE;
+        type2 = ItemTemplate.TYPE2_WEAPON;
     }
 
     /**
@@ -87,7 +55,7 @@ public final class Weapon extends ItemTemplate {
      */
     @Override
     public WeaponType getItemType() {
-        return _type;
+        return type;
     }
 
     /**
@@ -95,7 +63,7 @@ public final class Weapon extends ItemTemplate {
      */
     @Override
     public int getItemMask() {
-        return _type.mask();
+        return type.mask();
     }
 
     /**
@@ -103,21 +71,21 @@ public final class Weapon extends ItemTemplate {
      */
     @Override
     public boolean isMagicWeapon() {
-        return _isMagicWeapon;
+        return magic;
     }
 
     /**
      * @return the quantity of SoulShot used.
      */
-    public int getSoulShotCount() {
-        return _soulShotCount;
+    public int getSoulShot() {
+        return soulShot;
     }
 
     /**
      * @return the quantity of SpiritShot used.
      */
     public int getSpiritShotCount() {
-        return _spiritShotCount;
+        return spiritShot;
     }
 
     /**
@@ -138,15 +106,15 @@ public final class Weapon extends ItemTemplate {
      * @return the MP consumption with the weapon.
      */
     public int getMpConsume() {
-        return _mpConsume;
+        return manaConsume;
     }
 
     public int getBaseAttackRadius() {
-        return _baseAttackRadius;
+        return damageRadius;
     }
 
     public int getBaseAttackAngle() {
-        return _baseAttackAngle;
+        return attackangle;
     }
 
     /**
@@ -167,28 +135,21 @@ public final class Weapon extends ItemTemplate {
      * @return the Id in which weapon this weapon can be changed.
      */
     public int getChangeWeaponId() {
-        return _changeWeaponId;
-    }
-
-    /**
-     * @return {@code true} if the weapon is force equip, {@code false} otherwise.
-     */
-    public boolean isForceEquip() {
-        return _isForceEquip;
+        return changeWeapon;
     }
 
     /**
      * @return {@code true} if the weapon is attack weapon, {@code false} otherwise.
      */
     public boolean isAttackWeapon() {
-        return _isAttackWeapon;
+        return isAttackWeapon;
     }
 
     /**
      * @return {@code true} if the weapon is skills only, {@code false} otherwise.
      */
     public boolean useWeaponSkillsOnly() {
-        return _useWeaponSkillsOnly;
+        return useWeaponSkillsOnly;
     }
 
     /**
@@ -246,5 +207,71 @@ public final class Weapon extends ItemTemplate {
                 }
             }
         });
+    }
+
+    public void setMagic(boolean magic) {
+        this.magic = magic;
+    }
+
+    public void setSoulshots(int soulshots) {
+        this.soulShot = soulshots;
+    }
+
+    public void setSpiritshots(int spiritshots) {
+        this.spiritShot = spiritshots;
+    }
+
+    public void setManaConsume(int mana) {
+        this.manaConsume = mana;
+    }
+
+    public void setDamageRadius(int radius) {
+        this.damageRadius = radius;
+    }
+
+    public void setDamageAngle(int angle) {
+        this.attackangle = angle;
+    }
+
+    public void setEnchantable(Boolean enchantable) {
+        this.enchantable = enchantable;
+    }
+
+    public void setChangeWeapon(int changeWeapon) {
+        this.changeWeapon = changeWeapon;
+    }
+
+    public void setCanAttack(Boolean canAttack) {
+        isAttackWeapon = canAttack;
+    }
+
+    public void setRestrictSkills(Boolean restrictSkills) {
+        useWeaponSkillsOnly = restrictSkills;
+    }
+
+    public void setEquipReuseDelay(int equipReuseDelay) {
+        this.equipReuseDelay = equipReuseDelay;
+    }
+
+    public void setCrystalType(CrystalType crystalType) {
+        this.crystalType = crystalType;
+    }
+
+    public void setCrystalCount(int count) {
+        this.crystalCount = count;
+    }
+
+    public int getConsumeShotsCount() {
+        int count = switch (crystalType) {
+                case S -> 4;
+                case A -> 3;
+                case B -> 2;
+                default -> 1;
+            };
+
+        if(type == WeaponType.BOW) {
+            count ++;
+        }
+        return count;
     }
 }

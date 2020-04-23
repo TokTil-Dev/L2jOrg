@@ -16,12 +16,14 @@
  */
 package org.l2j.gameserver.model.conditions;
 
+import org.l2j.gameserver.enums.InventorySlot;
 import org.l2j.gameserver.model.actor.Creature;
 import org.l2j.gameserver.model.itemcontainer.Inventory;
+import org.l2j.gameserver.model.items.BodyPart;
 import org.l2j.gameserver.model.items.ItemTemplate;
 import org.l2j.gameserver.model.items.instance.Item;
 import org.l2j.gameserver.model.items.type.ArmorType;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 
 import static org.l2j.gameserver.util.GameUtils.isPlayer;
 
@@ -31,8 +33,8 @@ import static org.l2j.gameserver.util.GameUtils.isPlayer;
  * @author mkizub
  */
 public final class ConditionUsingItemType extends Condition {
-    private final boolean _armor;
-    private final int _mask;
+    public final boolean _armor;
+    public final int _mask;
 
     /**
      * Instantiates a new condition using item type.
@@ -54,11 +56,11 @@ public final class ConditionUsingItemType extends Condition {
         // If ConditionUsingItemType is one between Light, Heavy or Magic
         if (_armor) {
             // Get the itemMask of the weared chest (if exists)
-            final Item chest = inv.getPaperdollItem(Inventory.PAPERDOLL_CHEST);
+            final Item chest = inv.getPaperdollItem(InventorySlot.CHEST);
             if (chest == null) {
                 return (ArmorType.NONE.mask() & _mask) == ArmorType.NONE.mask();
             }
-            final int chestMask = chest.getItem().getItemMask();
+            final int chestMask = chest.getTemplate().getItemMask();
 
             // If chest armor is different from the condition one return false
             if ((_mask & chestMask) == 0) {
@@ -66,18 +68,17 @@ public final class ConditionUsingItemType extends Condition {
             }
 
             // So from here, chest armor matches conditions
-
-            final long chestBodyPart = chest.getItem().getBodyPart();
+            var chestBodyPart = chest.getBodyPart();
             // return True if chest armor is a Full Armor
-            if (chestBodyPart == ItemTemplate.SLOT_FULL_ARMOR) {
+            if (chestBodyPart == BodyPart.FULL_ARMOR) {
                 return true;
             }
             // check legs armor
-            final Item legs = inv.getPaperdollItem(Inventory.PAPERDOLL_LEGS);
+            final Item legs = inv.getPaperdollItem(InventorySlot.LEGS);
             if (legs == null) {
                 return (ArmorType.NONE.mask() & _mask) == ArmorType.NONE.mask();
             }
-            final int legMask = legs.getItem().getItemMask();
+            final int legMask = legs.getTemplate().getItemMask();
             // return true if legs armor matches too
             return (_mask & legMask) != 0;
         }

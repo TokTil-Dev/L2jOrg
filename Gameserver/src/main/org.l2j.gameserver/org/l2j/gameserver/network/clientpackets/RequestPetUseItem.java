@@ -1,5 +1,6 @@
 package org.l2j.gameserver.network.clientpackets;
 
+import org.l2j.gameserver.enums.InventorySlot;
 import org.l2j.gameserver.handler.IItemHandler;
 import org.l2j.gameserver.handler.ItemHandler;
 import org.l2j.gameserver.model.actor.instance.Pet;
@@ -41,7 +42,7 @@ public final class RequestPetUseItem extends ClientPacket {
             return;
         }
 
-        if (!item.getItem().isForNpc()) {
+        if (!item.getTemplate().isForNpc()) {
             activeChar.sendPacket(SystemMessageId.THIS_PET_CANNOT_USE_THIS_ITEM);
             return;
         }
@@ -63,7 +64,7 @@ public final class RequestPetUseItem extends ClientPacket {
             }
         }
 
-        if (!item.isEquipped() && !item.getItem().checkCondition(pet, pet, true)) {
+        if (!item.isEquipped() && !item.getTemplate().checkCondition(pet, pet, true)) {
             return;
         }
 
@@ -72,13 +73,13 @@ public final class RequestPetUseItem extends ClientPacket {
 
     private void useItem(Pet pet, Item item, Player activeChar) {
         if (item.isEquipable()) {
-            if (!item.getItem().isConditionAttached()) {
+            if (!item.getTemplate().isConditionAttached()) {
                 activeChar.sendPacket(SystemMessageId.THIS_PET_CANNOT_USE_THIS_ITEM);
                 return;
             }
 
             if (item.isEquipped()) {
-                pet.getInventory().unEquipItemInSlot(item.getLocationSlot());
+                pet.getInventory().unEquipItemInSlot(InventorySlot.fromId(item.getLocationSlot()));
             } else {
                 pet.getInventory().equipItem(item);
             }

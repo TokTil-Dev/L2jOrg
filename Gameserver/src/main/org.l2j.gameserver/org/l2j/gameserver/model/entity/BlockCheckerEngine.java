@@ -3,7 +3,7 @@ package org.l2j.gameserver.model.entity;
 import org.l2j.commons.threading.ThreadPool;
 import org.l2j.commons.util.Rnd;
 import org.l2j.gameserver.data.xml.impl.NpcData;
-import org.l2j.gameserver.data.xml.impl.SkillData;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
 import org.l2j.gameserver.datatables.SpawnTable;
 import org.l2j.gameserver.enums.Team;
 import org.l2j.gameserver.instancemanager.HandysBlockCheckerManager;
@@ -13,9 +13,9 @@ import org.l2j.gameserver.model.actor.Summon;
 import org.l2j.gameserver.model.actor.instance.Block;
 import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.model.actor.templates.NpcTemplate;
-import org.l2j.gameserver.model.itemcontainer.PcInventory;
+import org.l2j.gameserver.model.itemcontainer.PlayerInventory;
 import org.l2j.gameserver.model.items.instance.Item;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.world.zone.ZoneType;
 import org.l2j.gameserver.network.SystemMessageId;
 import org.l2j.gameserver.network.serverpackets.*;
@@ -283,9 +283,9 @@ public final class BlockCheckerEngine {
 
         public StartEvent() {
             // Initialize all used skills
-            _freeze = SkillData.getInstance().getSkill(6034, 1);
-            _transformationRed = SkillData.getInstance().getSkill(6035, 1);
-            _transformationBlue = SkillData.getInstance().getSkill(6036, 1);
+            _freeze = SkillEngine.getInstance().getSkill(6034, 1);
+            _transformationRed = SkillEngine.getInstance().getSkill(6035, 1);
+            _transformationBlue = SkillEngine.getInstance().getSkill(6036, 1);
         }
 
         /**
@@ -634,8 +634,8 @@ public final class BlockCheckerEngine {
                 player.setTeam(Team.NONE);
                 // Set default arena
                 player.setBlockCheckerArena(DEFAULT_ARENA);
-                // Remove the event items
-                final PcInventory inv = player.getInventory();
+                // Remove the event item
+                final PlayerInventory inv = player.getInventory();
                 if (inv.getItemByItemId(13787) != null) {
                     inv.destroyItemByItemId("Handys Block Checker", 13787, inv.getInventoryItemCount(13787, 0), player, player);
                 }

@@ -2,7 +2,7 @@ package org.l2j.gameserver.network.serverpackets;
 
 import org.l2j.gameserver.instancemanager.CastleManager;
 import org.l2j.gameserver.instancemanager.CastleManorManager;
-import org.l2j.gameserver.model.CropProcure;
+import org.l2j.gameserver.data.database.data.CropProcure;
 import org.l2j.gameserver.model.entity.Castle;
 import org.l2j.gameserver.network.GameClient;
 import org.l2j.gameserver.network.ServerPacketId;
@@ -21,9 +21,9 @@ public class ExShowProcureCropDetail extends ServerPacket {
         _cropId = cropId;
 
         for (Castle c : CastleManager.getInstance().getCastles()) {
-            final CropProcure cropItem = CastleManorManager.getInstance().getCropProcure(c.getResidenceId(), cropId, false);
+            final CropProcure cropItem = CastleManorManager.getInstance().getCropProcure(c.getId(), cropId, false);
             if ((cropItem != null) && (cropItem.getAmount() > 0)) {
-                _castleCrops.put(c.getResidenceId(), cropItem);
+                _castleCrops.put(c.getId(), cropItem);
             }
         }
     }

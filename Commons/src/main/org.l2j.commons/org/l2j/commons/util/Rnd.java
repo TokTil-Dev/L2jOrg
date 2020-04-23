@@ -23,9 +23,8 @@ public class Rnd
 	 * @param n The superior limit (exclusive)
 	 * @return A number from 0 to n-1
 	 */
-	public static int get(int n)
-	{
-		return rnd().nextInt(n);
+	public static int get(int n) {
+		return n < 2 ? 0 : rnd().nextInt(n);
 	}
 
 	public static long get(long n)
@@ -108,9 +107,8 @@ public class Rnd
 	 * <li> If chance> = 100, returns true
 	 * Translated by Google.
 	 */
-	public static boolean chance(double chance)
-	{
-		return rnd().nextDouble() <= chance / 100.;
+	public static boolean chance(double chance) {
+		return chance >= 100 || rnd().nextDouble() <= chance / 100.;
 	}
 
 	public static <E> E get(E[] list)

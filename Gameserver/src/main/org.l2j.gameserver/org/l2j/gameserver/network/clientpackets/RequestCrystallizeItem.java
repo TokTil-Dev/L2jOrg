@@ -3,11 +3,12 @@ package org.l2j.gameserver.network.clientpackets;
 import org.l2j.commons.util.Rnd;
 import org.l2j.gameserver.Config;
 import org.l2j.gameserver.data.xml.impl.ItemCrystallizationData;
+import org.l2j.gameserver.enums.InventorySlot;
 import org.l2j.gameserver.enums.PrivateStoreType;
 import org.l2j.gameserver.enums.Race;
 import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.model.holders.ItemChanceHolder;
-import org.l2j.gameserver.model.itemcontainer.PcInventory;
+import org.l2j.gameserver.model.itemcontainer.PlayerInventory;
 import org.l2j.gameserver.model.items.instance.Item;
 import org.l2j.gameserver.model.items.type.CrystalType;
 import org.l2j.gameserver.model.skills.CommonSkill;
@@ -46,14 +47,8 @@ public final class RequestCrystallizeItem extends ClientPacket {
             return;
         }
 
-        // if (!client.getFloodProtectors().getTransaction().tryPerformAction("crystallize"))
-        // {
-        // activeChar.sendMessage("You are crystallizing too fast.");
-        // return;
-        // }
-
         if (_count <= 0) {
-            GameUtils.handleIllegalPlayerAction(activeChar, "[RequestCrystallizeItem] count <= 0! ban! oid: " + _objectId + " owner: " + activeChar.getName(), Config.DEFAULT_PUNISH);
+            GameUtils.handleIllegalPlayerAction(activeChar, "[RequestCrystallizeItem] count <= 0! ban! oid: " + _objectId + " owner: " + activeChar.getName());
             return;
         }
 
@@ -66,13 +61,13 @@ public final class RequestCrystallizeItem extends ClientPacket {
         if (skillLevel <= 0) {
             client.sendPacket(SystemMessageId.YOU_MAY_NOT_CRYSTALLIZE_THIS_ITEM_YOUR_CRYSTALLIZATION_SKILL_LEVEL_IS_TOO_LOW);
             client.sendPacket(ActionFailed.STATIC_PACKET);
-            if ((activeChar.getRace() != Race.DWARF) && (activeChar.getClassId().ordinal() != 117) && (activeChar.getClassId().ordinal() != 55)) {
-                LOGGER.info("Player " + activeChar + " used crystalize with classid: " + activeChar.getClassId().ordinal());
+            if ((activeChar.getRace() != Race.DWARF) && (activeChar.getClassId().getId() != 117) && (activeChar.getClassId().getId() != 55)) {
+                LOGGER.info("Player {} used crystalize with classid: {}", activeChar, activeChar.getClassId().getId());
             }
             return;
         }
 
-        final PcInventory inventory = activeChar.getInventory();
+        final PlayerInventory inventory = activeChar.getInventory();
         if (inventory != null) {
             final Item item = inventory.getItemByObjectId(_objectId);
             if ((item == null) || item.isHeroItem()) {
@@ -85,17 +80,17 @@ public final class RequestCrystallizeItem extends ClientPacket {
         }
 
         final Item itemToRemove = activeChar.getInventory().getItemByObjectId(_objectId);
-        if ((itemToRemove == null) || itemToRemove.isShadowItem() || itemToRemove.isTimeLimitedItem()) {
+        if ((itemToRemove == null) || itemToRemove.isTimeLimitedItem()) {
             client.sendPacket(ActionFailed.STATIC_PACKET);
             return;
         }
 
-        if (!itemToRemove.getItem().isCrystallizable() || (itemToRemove.getItem().getCrystalCount() <= 0) || (itemToRemove.getItem().getCrystalType() == CrystalType.NONE)) {
+        if (!itemToRemove.getTemplate().isCrystallizable() || (itemToRemove.getTemplate().getCrystalCount() <= 0) || (itemToRemove.getTemplate().getCrystalType() == CrystalType.NONE)) {
             client.sendPacket(SystemMessageId.THIS_ITEM_CANNOT_BE_CRYSTALLIZED);
             return;
         }
 
-        if (!activeChar.getInventory().canManipulateWithItemId(itemToRemove.getId())) {
+        if (!activeChar.getInventory().canManipulate(itemToRemove)) {
             client.sendPacket(SystemMessageId.THIS_ITEM_CANNOT_BE_CRYSTALLIZED);
             return;
         }
@@ -103,7 +98,7 @@ public final class RequestCrystallizeItem extends ClientPacket {
         // Check if the char can crystallize items and return if false;
         boolean canCrystallize = true;
 
-        switch (itemToRemove.getItem().getCrystalType()) {
+        switch (itemToRemove.getTemplate().getCrystalType()) {
             case D: {
                 if (skillLevel < 1) {
                     canCrystallize = false;
@@ -153,7 +148,7 @@ public final class RequestCrystallizeItem extends ClientPacket {
         // unequip if needed
         SystemMessage sm;
         if (itemToRemove.isEquipped()) {
-            final Item[] unequiped = activeChar.getInventory().unEquipItemInSlotAndRecord(itemToRemove.getLocationSlot());
+            var unequiped = activeChar.getInventory().unEquipItemInSlotAndRecord(InventorySlot.fromId(itemToRemove.getLocationSlot()));
             final InventoryUpdate iu = new InventoryUpdate();
             for (Item item : unequiped) {
                 iu.addModifiedItem(item);

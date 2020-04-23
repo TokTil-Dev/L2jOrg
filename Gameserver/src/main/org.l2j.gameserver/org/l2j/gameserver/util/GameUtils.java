@@ -18,6 +18,7 @@ import org.l2j.gameserver.model.items.Weapon;
 import org.l2j.gameserver.model.items.instance.Item;
 import org.l2j.gameserver.network.serverpackets.ShowBoard;
 import org.l2j.gameserver.network.serverpackets.html.AbstractHtmlPacket;
+import org.l2j.gameserver.settings.GeneralSettings;
 import org.l2j.gameserver.world.World;
 import org.l2j.gameserver.world.zone.ZoneType;
 import org.slf4j.Logger;
@@ -27,10 +28,12 @@ import java.text.DateFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
+import static org.l2j.commons.configuration.Configurator.getSettings;
 import static org.l2j.commons.util.Util.isAnyNull;
 import static org.l2j.gameserver.util.MathUtil.isInsideRadius2D;
 import static org.l2j.gameserver.util.MathUtil.isInsideRadius3D;
@@ -39,10 +42,15 @@ import static org.l2j.gameserver.util.MathUtil.isInsideRadius3D;
  * General Utility functions related to game server.
  *
  * TODO move generic functions to Util of Commons
+ * @author JoeAlisson
  */
 public final class GameUtils {
     private static final Logger LOGGER = LoggerFactory.getLogger(GameUtils.class);
     private static final NumberFormat ADENA_FORMATTER = NumberFormat.getIntegerInstance(Locale.ENGLISH);
+
+    public static void handleIllegalPlayerAction(Player actor, String message) {
+        handleIllegalPlayerAction(actor, message, getSettings(GeneralSettings.class).defaultPunishment());
+    }
 
     public static void handleIllegalPlayerAction(Player actor, String message, IllegalActionPunishmentType punishment) {
         ThreadPool.schedule(new IllegalPlayerActionTask(actor, message, punishment), 5000);
@@ -343,7 +351,7 @@ public final class GameUtils {
      * @param text
      */
     public static void fillMultiEditContent(Player activeChar, String text) {
-        activeChar.sendPacket(new ShowBoard(Arrays.asList("0", "0", "0", "0", "0", "0", activeChar.getName(), Integer.toString(activeChar.getObjectId()), activeChar.getAccountName(), "9", " ", " ", text.replaceAll("<br>", Config.EOL), "0", "0", "0", "0")));
+        activeChar.sendPacket(new ShowBoard(Arrays.asList("0", "0", "0", "0", "0", "0", activeChar.getName(), Integer.toString(activeChar.getObjectId()), activeChar.getAccountName(), "9", " ", " ", text.replaceAll("<br>", System.lineSeparator()), "0", "0", "0", "0")));
     }
 
     public static boolean isInsideRangeOfObjectId(WorldObject obj, int targetObjId, int radius) {
@@ -464,6 +472,12 @@ public final class GameUtils {
         return object instanceof Creature;
     }
 
+    public static void doIfIsCreature(WorldObject object, Consumer<Creature> action) {
+        if(object instanceof Creature creature) {
+            action.accept(creature);
+        }
+    }
+
     public static boolean isMonster(WorldObject object) {
         return object instanceof Monster;
     }
@@ -476,13 +490,21 @@ public final class GameUtils {
         return object instanceof Playable;
     }
 
-    public static boolean isWalker(WorldObject creature) {
-        if(isMonster(creature)) {
-            Monster monster = (Monster) creature;
+    public static boolean isArtifact(WorldObject object) {
+        return object instanceof Artefact;
+    }
+
+    public static boolean isGM(Creature creature) {
+        return nonNull(creature) && creature.isGM();
+    }
+
+    public static boolean isWalker(WorldObject object) {
+        if(isMonster(object)) {
+            Monster monster = (Monster) object;
             Monster leader;
             return nonNull(leader = monster.getLeader()) ? isWalker(leader) : WalkingManager.getInstance().isRegistered(monster);
         }
-        return isNpc(creature) &&  WalkingManager.getInstance().isRegistered((Npc) creature);
+        return isNpc(object) &&  WalkingManager.getInstance().isRegistered((Npc) object);
     }
 
     public static boolean isSummon(WorldObject object) {
@@ -513,6 +535,10 @@ public final class GameUtils {
         return object instanceof Item;
     }
 
+    public static boolean isWeapon(Item item) {
+        return nonNull(item) && isWeapon(item.getTemplate());
+    }
+
     public static boolean isWeapon(ItemTemplate item) {
         return item instanceof Weapon;
     }
@@ -523,6 +549,6 @@ public final class GameUtils {
 
     public static boolean canTeleport(Player player) {
         return !( isNull(player) || player.isInDuel() || player.isControlBlocked() || player.isConfused() || player.isCombatFlagEquipped() || player.isFlying() || player.isFlyingMounted() ||
-                player.isInOlympiadMode() || player.isAlikeDead() || player.isOnCustomEvent() || player.isInBattle() || player.isInsideZone(ZoneType.JAIL));
+                player.isInOlympiadMode() || player.isAlikeDead() || player.isOnCustomEvent() || player.isInBattle() || player.isInsideZone(ZoneType.JAIL) || player.isInTimedHuntingZone());
     }
 }

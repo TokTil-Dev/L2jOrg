@@ -1,38 +1,29 @@
 package org.l2j.gameserver.model.items;
 
-import org.l2j.gameserver.model.StatsSet;
 import org.l2j.gameserver.model.items.type.ArmorType;
+import org.l2j.gameserver.model.items.type.CrystalType;
+
+import static org.l2j.gameserver.model.items.BodyPart.*;
 
 /**
  * This class is dedicated to the management of armors.
+ *
+ * @author JoeAlisson
  */
-public final class Armor extends ItemTemplate {
-    private ArmorType _type;
+public final class Armor extends ItemTemplate implements EquipableItem {
+    private ArmorType type;
 
-    /**
-     * Constructor for Armor.
-     *
-     * @param set the StatsSet designating the set of couples (key,value) characterizing the armor.
-     */
-    public Armor(StatsSet set) {
-        super(set);
-    }
+    public Armor(int id, String name, ArmorType type, BodyPart bodyPart) {
+        super(id, name);
+        this.type = type;
+        this.bodyPart = bodyPart;
 
-    @Override
-    public void set(StatsSet set) {
-        super.set(set);
-        _type = set.getEnum("armor_type", ArmorType.class, ArmorType.NONE);
-
-        final long _bodyPart = getBodyPart();
-        if ((_bodyPart == SLOT_NECK) || ((_bodyPart & SLOT_L_EAR) != 0) || ((_bodyPart & SLOT_L_FINGER) != 0) || ((_bodyPart & SLOT_R_BRACELET) != 0) || ((_bodyPart & SLOT_L_BRACELET) != 0) || ((_bodyPart & SLOT_ARTIFACT_BOOK) != 0)) {
-            _type1 = TYPE1_WEAPON_RING_EARRING_NECKLACE;
-            _type2 = TYPE2_ACCESSORY;
+        if(bodyPart.isAnyOf(NECK, EAR, FINGER, RIGHT_BRACELET, LEFT_BRACELET, ARTIFACT_BOOK)) {
+            type1 = TYPE1_WEAPON_RING_EARRING_NECKLACE;
+            type2 = TYPE2_ACCESSORY;
         } else {
-            if ((_type == ArmorType.NONE) && (getBodyPart() == SLOT_L_HAND)) {
-                _type = ArmorType.SHIELD;
-            }
-            _type1 = TYPE1_SHIELD_ARMOR;
-            _type2 = TYPE2_SHIELD_ARMOR;
+            type1 = TYPE1_SHIELD_ARMOR;
+            type2 = TYPE2_SHIELD_ARMOR;
         }
     }
 
@@ -41,7 +32,7 @@ public final class Armor extends ItemTemplate {
      */
     @Override
     public ArmorType getItemType() {
-        return _type;
+        return type;
     }
 
     /**
@@ -49,6 +40,24 @@ public final class Armor extends ItemTemplate {
      */
     @Override
     public final int getItemMask() {
-        return _type.mask();
+        return type.mask();
+    }
+
+    @Override
+    public void setCrystalType(CrystalType type) {
+        this.crystalType = type;
+    }
+
+    @Override
+    public void setCrystalCount(int count) {
+        this.crystalCount = count;
+    }
+
+    public void setEnchantable(Boolean enchantable) {
+        this.enchantable = enchantable;
+    }
+
+    public void setEquipReuseDelay(int equipReuseDelay) {
+        this.equipReuseDelay = equipReuseDelay;
     }
 }

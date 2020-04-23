@@ -1,0 +1,457 @@
+    <skill id="59198" name="School Uniform B" action="A1">
+        <!-- Transformed into a standard transformation. XP gain +5%%. Transformation remains after death. -->
+        <icon initial="BranchIcon.Icon.g_bm_costume_schoollook_b"/>
+        <attributes property="PHYSIC" stay-after-death="true" auto-use="TRANSFORM">
+            <reuse initial="10800000"/>
+            <effect-range initial="-1"/>
+        </attributes>
+        <consume>
+            <item initial="71684"/>
+            <item-count initial="15"/>
+        </consume>
+        <target/>
+        <abnormal type="CHANGEBODY" visual="COSTUME_SCHOOL_LV2">
+			<level initial="1"/>
+            <time initial="900"/>
+        </abnormal>
+        <effects>
+            <stat-modify mode="PER" stat="BONUS_EXP" stat-add="BONUS_EXP">
+                <power initial="5.0"/>
+            </stat-modify>
+        </effects>
+    </skill>
+    <skill id="59199" name="School Uniform B" action="A1">
+        <!-- Transformed into a high-grade transformation. XP gain +10%%, P. Atk. +5%%, M. Atk. +5%%. Transformation remains after death. \n\n<Special Ability>\n CON +1, MEN +1 -->
+        <icon initial="BranchIcon.Icon.g_bm_costume_schoollook_b"/>
+        <attributes property="PHYSIC" stay-after-death="true" auto-use="TRANSFORM">
+            <reuse initial="10800000"/>
+            <effect-range initial="-1"/>
+        </attributes>
+        <consume>
+            <item initial="71684"/>
+            <item-count initial="15"/>
+        </consume>
+        <target/>
+        <abnormal type="CHANGEBODY" visual="COSTUME_SCHOOL_LV2">
+			<level initial="2"/>
+            <time initial="900"/>
+        </abnormal>
+        <effects>
+            <stat-modify mode="PER" stat="BONUS_EXP" stat-add="BONUS_EXP">
+                <power initial="10.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="PHYSICAL_ATTACK">
+                <power initial="5.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="MAGIC_ATTACK">
+                <power initial="5.0"/>
+            </stat-modify>
+			<base-stat type="CON">
+                <power initial="1.0"/>
+            </base-stat>
+			<base-stat type="MEN">
+                <power initial="1.0"/>
+            </base-stat>
+        </effects>
+    </skill>
+	<skill id="59200" name="School Uniform B" action="A1">
+        <!-- Transformed into a rare transformation. XP gain +20%%, P. Atk. +10%% M. Atk. +10%%, P. Critical Damage/M. Critical Damage +5%%, Movement Speed +5. Transformation remains after death. \n\n<Special Ability>\n CON +1, MEN +1, DEX +1 -->
+        <icon initial="BranchIcon.Icon.g_bm_costume_schoollook_b"/>
+		<attributes property="PHYSIC" stay-after-death="true" auto-use="TRANSFORM">
+            <reuse initial="10800000"/>
+            <effect-range initial="-1"/>
+        </attributes>
+        <consume>
+            <item initial="71684"/>
+            <item-count initial="20"/>
+        </consume>
+        <target/>
+        <abnormal type="CHANGEBODY" visual="COSTUME_SCHOOL_LV2">
+			<level initial="3"/>
+            <time initial="900"/>
+        </abnormal>
+        <effects>
+            <stat-modify mode="PER" stat="BONUS_EXP" stat-add="BONUS_EXP">
+                <power initial="20.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="PHYSICAL_ATTACK">
+                <power initial="10.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="MAGIC_ATTACK">
+                <power initial="10.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="CRITICAL_DAMAGE" stat-add="CRITICAL_DAMAGE_ADD">
+                <power initial="5.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="MAGIC_CRITICAL_DAMAGE" stat-add="MAGIC_CRITICAL_DAMAGE_ADD">
+                <power initial="5.0"/>
+            </stat-modify>
+			<speed>
+                <power initial="5.0"/>
+            </speed>
+			<base-stat type="CON">
+                <power initial="1.0"/>
+            </base-stat>
+			<base-stat type="MEN">
+                <power initial="1.0"/>
+            </base-stat>
+			<base-stat type="DEX">
+                <power initial="1.0"/>
+            </base-stat>
+        </effects>
+    </skill>
+    <skill id="59201" name="School Uniform B" action="A1">
+        <!-- Transformed into a legendary transformation. XP gain +30%%, P. Atk. +15%%, M. Atk. +15%%, P. Critical Damage/M. Critical Damage +10%%, Movement Speed +10, PvP Damage Received -10%%. Transformation remains after death. \n\n<Special Ability>\n CON +2, MEN +2, DEX +2, WIT +1, STR +1, INT +1 -->
+        <icon initial="BranchIcon.Icon.g_bm_costume_schoollook_b"/>
+        <attributes property="PHYSIC" stay-after-death="true" auto-use="TRANSFORM">
+            <reuse initial="10800000"/>
+            <effect-range initial="-1"/>
+        </attributes>
+        <consume>
+            <item initial="71684"/>
+            <item-count initial="20"/>
+        </consume>
+        <target/>
+        <abnormal type="CHANGEBODY" visual="COSTUME_SCHOOL_LV2">
+			<level initial="4"/>
+            <time initial="900"/>
+        </abnormal>
+        <effects>
+            <stat-modify mode="PER" stat="BONUS_EXP" stat-add="BONUS_EXP">
+                <power initial="30.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="PHYSICAL_ATTACK">
+                <power initial="15.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="MAGIC_ATTACK">
+                <power initial="15.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="CRITICAL_DAMAGE" stat-add="CRITICAL_DAMAGE_ADD">
+                <power initial="10.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="MAGIC_CRITICAL_DAMAGE" stat-add="MAGIC_CRITICAL_DAMAGE_ADD">
+                <power initial="10.0"/>
+            </stat-modify>
+			<speed>
+                <power initial="10.0"/>
+            </speed>
+			<stat-modify mode="PER" stat="PVP_MAGICAL_SKILL_DEFENCE">
+                <power initial="10.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="PVP_PHYSICAL_ATTACK_DEFENCE">
+                <power initial="10.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="PVP_PHYSICAL_SKILL_DEFENCE">
+                <power initial="10.0"/>
+            </stat-modify>
+			<base-stat type="CON">
+                <power initial="2.0"/>
+            </base-stat>
+			<base-stat type="MEN">
+                <power initial="2.0"/>
+            </base-stat>
+			<base-stat type="DEX">
+                <power initial="2.0"/>
+            </base-stat>
+			<base-stat type="WIT">
+                <power initial="1.0"/>
+            </base-stat>
+			<base-stat type="STR">
+                <power initial="1.0"/>
+            </base-stat>
+			<base-stat type="INT">
+                <power initial="1.0"/>
+            </base-stat>
+        </effects>
+    </skill>
+    <skill id="59202" name="School Uniform B" action="A1">
+        <!-- Transformed into a mythic transformation. XP gain +50%%, P. Atk. +20%%, M. Atk. +20%%, P. Critical Damage/M. Critical Damage +15%%, Movement Speed +20, PvP Damage +10%%, PvP Damage Received -20%%. Transformation remains after death. \n\n<Special Ability>\n All stats +3 -->
+        <icon initial="BranchIcon.Icon.g_bm_costume_schoollook_b"/>
+        <attributes property="PHYSIC" stay-after-death="true" auto-use="TRANSFORM">
+            <reuse initial="10800000"/>
+            <effect-range initial="-1"/>
+        </attributes>
+        <consume>
+            <item initial="71684"/>
+            <item-count initial="30"/>
+        </consume>
+        <target/>
+        <abnormal type="CHANGEBODY" visual="COSTUME_SCHOOL_LV2">
+			<level initial="5"/>
+            <time initial="900"/>
+        </abnormal>
+        <effects>
+            <stat-modify mode="PER" stat="BONUS_EXP" stat-add="BONUS_EXP">
+                <power initial="50.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="PHYSICAL_ATTACK">
+                <power initial="20.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="MAGIC_ATTACK">
+                <power initial="20.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="CRITICAL_DAMAGE" stat-add="CRITICAL_DAMAGE_ADD">
+                <power initial="15.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="MAGIC_CRITICAL_DAMAGE" stat-add="MAGIC_CRITICAL_DAMAGE_ADD">
+                <power initial="15.0"/>
+            </stat-modify>
+			<speed>
+                <power initial="20.0"/>
+            </speed>
+			<stat-modify mode="PER" stat="PVP_PHYSICAL_ATTACK_DAMAGE">
+                <power initial="10.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="PVP_MAGICAL_SKILL_DAMAGE">
+                <power initial="10.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="PVP_PHYSICAL_SKILL_DAMAGE">
+                <power initial="10.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="PVP_MAGICAL_SKILL_DEFENCE">
+                <power initial="20.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="PVP_PHYSICAL_ATTACK_DEFENCE">
+                <power initial="20.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="PVP_PHYSICAL_SKILL_DEFENCE">
+                <power initial="20.0"/>
+            </stat-modify>
+			<base-stat type="CON">
+                <power initial="3.0"/>
+            </base-stat>
+			<base-stat type="MEN">
+                <power initial="3.0"/>
+            </base-stat>
+			<base-stat type="DEX">
+                <power initial="3.0"/>
+            </base-stat>
+			<base-stat type="WIT">
+                <power initial="3.0"/>
+            </base-stat>
+			<base-stat type="STR">
+                <power initial="3.0"/>
+            </base-stat>
+			<base-stat type="INT">
+                <power initial="3.0"/>
+            </base-stat>
+        </effects>
+    </skill>
+    <skill id="59208" name="Metal Suit" action="A1">
+        <!-- Transformed into a standard transformation. XP gain +5%%. Transformation remains after death. \n\n<Special Ability>\n P. Def/M. Def +1%% -->
+        <icon initial="BranchSys3.icon1.g_co_sf_u"/>
+        <attributes property="PHYSIC" stay-after-death="true" auto-use="TRANSFORM">
+            <reuse initial="10800000"/>
+            <effect-range initial="-1"/>
+        </attributes>
+        <consume>
+            <item initial="71684"/>
+            <item-count initial="15"/>
+        </consume>
+        <target/>
+        <abnormal type="CHANGEBODY" visual="COSTUME_METAL">
+			<level initial="1"/>
+            <time initial="900"/>
+        </abnormal>
+        <effects>
+            <stat-modify mode="PER" stat="BONUS_EXP" stat-add="BONUS_EXP">
+                <power initial="5.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="PHYSICAL_DEFENCE">
+                <power initial="1.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="MAGICAL_DEFENCE">
+                <power initial="1.0"/>
+            </stat-modify>           
+        </effects>
+    </skill>
+    <skill id="59209" name="Metal Suit" action="A1">
+        <!-- Transformed into a high-grade transformation. XP gain +10%%, P. Atk. +5%%, M. Atk. +5%%. Transformation remains after death. \n\n<Special Ability>\n P. Def/M. Def +3%% -->
+        <icon initial="BranchSys3.icon1.g_co_sf_u"/>
+        <attributes property="PHYSIC" stay-after-death="true" auto-use="TRANSFORM">
+            <reuse initial="10800000"/>
+            <effect-range initial="-1"/>
+        </attributes>
+        <consume>
+            <item initial="71684"/>
+            <item-count initial="15"/>
+        </consume>
+        <target/>
+        <abnormal type="CHANGEBODY" visual="COSTUME_METAL">
+			<level initial="2"/>
+            <time initial="900"/>
+        </abnormal>
+        <effects>
+            <stat-modify mode="PER" stat="BONUS_EXP" stat-add="BONUS_EXP">
+                <power initial="10.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="PHYSICAL_ATTACK">
+                <power initial="5.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="MAGIC_ATTACK">
+                <power initial="5.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="PHYSICAL_DEFENCE">
+                <power initial="3.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="MAGICAL_DEFENCE">
+                <power initial="3.0"/>
+            </stat-modify>
+        </effects>
+    </skill>
+    <skill id="59210" name="Metal Suit" action="A1">
+        <!-- Transformed into a rare transformation. XP gain +20%%, P. Atk. +10%% M. Atk. +10%%, P. Critical Damage/M. Critical Damage +5%%, Movement Speed +5. Transformation remains after death. \n\n<Special Ability>\n P. Def/M. Def +7%% -->
+        <icon initial="BranchSys3.icon1.g_co_sf_u"/>
+        <attributes property="PHYSIC" stay-after-death="true" auto-use="TRANSFORM">
+            <reuse initial="10800000"/>
+            <effect-range initial="-1"/>
+        </attributes>
+        <consume>
+            <item initial="71684"/>
+            <item-count initial="20"/>
+        </consume>
+        <target/>
+        <abnormal type="CHANGEBODY" visual="COSTUME_METAL">
+			<level initial="3"/>
+            <time initial="900"/>
+        </abnormal>
+        <effects>
+            <stat-modify mode="PER" stat="BONUS_EXP" stat-add="BONUS_EXP">
+                <power initial="20.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="PHYSICAL_ATTACK">
+                <power initial="10.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="MAGIC_ATTACK">
+                <power initial="10.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="CRITICAL_DAMAGE" stat-add="CRITICAL_DAMAGE_ADD">
+                <power initial="5.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="MAGIC_CRITICAL_DAMAGE" stat-add="MAGIC_CRITICAL_DAMAGE_ADD">
+                <power initial="5.0"/>
+            </stat-modify>
+			<speed>
+                <power initial="5.0"/>
+            </speed>
+			<stat-modify mode="PER" stat="PHYSICAL_DEFENCE">
+                <power initial="7.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="MAGICAL_DEFENCE">
+                <power initial="7.0"/>
+            </stat-modify>
+        </effects>
+    </skill>
+    <skill id="59211" name="Metal Suit" action="A1">
+        <!-- Transformed into a legendary transformation. XP gain +30%%, P. Atk. +15%%, M. Atk. +15%%, P. Critical Damage/M. Critical Damage +10%%, Movement Speed +10, PvP Damage Received -10%%. Transformation remains after death. \n\n<Special Ability>\n P. Def/M. Def +10%% -->
+        <icon initial="BranchSys3.icon1.g_co_sf_u"/>
+        <attributes property="PHYSIC" stay-after-death="true" auto-use="TRANSFORM">
+            <reuse initial="10800000"/>
+            <effect-range initial="-1"/>
+        </attributes>
+        <consume>
+            <item initial="71684"/>
+            <item-count initial="20"/>
+        </consume>
+        <target/>
+        <abnormal type="CHANGEBODY" visual="COSTUME_METAL">
+			<level initial="4"/>
+            <time initial="900"/>
+        </abnormal>
+        <effects>
+            <stat-modify mode="PER" stat="BONUS_EXP" stat-add="BONUS_EXP">
+                <power initial="30.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="PHYSICAL_ATTACK">
+                <power initial="15.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="MAGIC_ATTACK">
+                <power initial="15.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="CRITICAL_DAMAGE" stat-add="CRITICAL_DAMAGE_ADD">
+                <power initial="10.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="MAGIC_CRITICAL_DAMAGE" stat-add="MAGIC_CRITICAL_DAMAGE_ADD">
+                <power initial="10.0"/>
+            </stat-modify>
+			<speed>
+                <power initial="10.0"/>
+            </speed>
+			<stat-modify mode="PER" stat="PVP_MAGICAL_SKILL_DEFENCE">
+                <power initial="10.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="PVP_PHYSICAL_ATTACK_DEFENCE">
+                <power initial="10.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="PVP_PHYSICAL_SKILL_DEFENCE">
+                <power initial="10.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="PHYSICAL_DEFENCE">
+                <power initial="10.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="MAGICAL_DEFENCE">
+                <power initial="10.0"/>
+            </stat-modify>
+        </effects>
+    </skill>
+    <skill id="59212" name="Metal Suit" action="A1">
+        <!-- Transformed into a mythic transformation. XP gain +50%%, P. Atk. +20%%, M. Atk. +20%%, P. Critical Damage/M. Critical Damage +15%%, Movement Speed +20, PvP Damage +10%%, PvP Damage Received -20%%. Transformation remains after death. \n\n<Special Ability>\n P. Def/M. Def +20%% -->
+        <icon initial="BranchSys3.icon1.g_co_sf_u"/>
+        <attributes property="PHYSIC" stay-after-death="true" auto-use="TRANSFORM">
+            <reuse initial="10800000"/>
+            <effect-range initial="-1"/>
+        </attributes>
+        <consume>
+            <item initial="71684"/>
+            <item-count initial="30"/>
+        </consume>
+        <target/>
+        <abnormal type="CHANGEBODY" visual="COSTUME_METAL">
+			<level initial="5"/>
+            <time initial="900"/>
+        </abnormal>
+        <effects>
+            <stat-modify mode="PER" stat="BONUS_EXP" stat-add="BONUS_EXP">
+                <power initial="50.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="PHYSICAL_ATTACK">
+                <power initial="20.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="MAGIC_ATTACK">
+                <power initial="20.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="CRITICAL_DAMAGE" stat-add="CRITICAL_DAMAGE_ADD">
+                <power initial="15.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="MAGIC_CRITICAL_DAMAGE" stat-add="MAGIC_CRITICAL_DAMAGE_ADD">
+                <power initial="15.0"/>
+            </stat-modify>
+			<speed>
+                <power initial="20.0"/>
+            </speed>
+			<stat-modify mode="PER" stat="PVP_PHYSICAL_ATTACK_DAMAGE">
+                <power initial="10.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="PVP_MAGICAL_SKILL_DAMAGE">
+                <power initial="10.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="PVP_PHYSICAL_SKILL_DAMAGE">
+                <power initial="10.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="PVP_MAGICAL_SKILL_DEFENCE">
+                <power initial="20.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="PVP_PHYSICAL_ATTACK_DEFENCE">
+                <power initial="20.0"/>
+            </stat-modify>
+            <stat-modify mode="PER" stat="PVP_PHYSICAL_SKILL_DEFENCE">
+                <power initial="20.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="PHYSICAL_DEFENCE">
+                <power initial="20.0"/>
+            </stat-modify>
+			<stat-modify mode="PER" stat="MAGICAL_DEFENCE">
+                <power initial="20.0"/>
+            </stat-modify>
+        </effects>
+    </skill>

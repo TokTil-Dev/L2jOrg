@@ -5,7 +5,10 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
-import java.util.function.*;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -36,17 +39,40 @@ public class Util {
         return isNull(data) || data.length == 0;
     }
 
-    public static <T> int zeroIfNullOrElse(T obj, ToIntFunction<T> action) {
-        return isNull(obj) ? 0 : action.applyAsInt(obj);
+    public static <T> int zeroIfNullOrElse(T obj, ToIntFunction<T> function) {
+        return isNull(obj) ? 0 : function.applyAsInt(obj);
     }
 
     public static <T> boolean falseIfNullOrElse(T obj, Predicate<T> predicate) {
         return nonNull(obj) && predicate.test(obj);
     }
 
+    public static <T, R> Set<R> emptySetIfNullOrElse(T obj, Function<T, Set<R>> function) {
+        return isNull(obj) ? Collections.emptySet() : function.apply(obj);
+    }
+
+    public static <T, R> R computeIfNonNull(T obj, Function<T, R> function) {
+        return isNull(obj) ? null : function.apply(obj);
+    }
+
+    public static <T> void doIfNonNull(T obj, Consumer<T> action) {
+        if(nonNull(obj)) {
+            action.accept(obj);
+        }
+    }
+
     public static boolean contains(int[] array, int obj) {
         for (int element : array) {
             if (element == obj) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static <T> boolean contains(T[] array, T obj) {
+        for (var element : array) {
+            if(Objects.equals(element, obj)) {
                 return true;
             }
         }
@@ -148,7 +174,7 @@ public class Util {
             fields.addAll(Stream.of(searchClass.getDeclaredFields()).collect(Collectors.toList()));
             searchClass = searchClass.getSuperclass();
         }
-        return Collections.unmodifiableList(fields);
+        return fields;
     }
 
     public static Field findField(final Class<?> classToSearch, String fieldName) {
@@ -187,4 +213,7 @@ public class Util {
         return defaultVal;
     }
 
+    public static boolean isBetween(int number, int min, int max) {
+        return  number >= min && number <= max;
+    }
 }

@@ -18,9 +18,9 @@ package org.l2j.gameserver.model.stats.finalizers;
 
 import org.l2j.gameserver.Config;
 import org.l2j.gameserver.model.actor.Creature;
-import org.l2j.gameserver.model.items.ItemTemplate;
+import org.l2j.gameserver.model.items.BodyPart;
 import org.l2j.gameserver.model.stats.IStatsFunction;
-import org.l2j.gameserver.model.stats.Stats;
+import org.l2j.gameserver.model.stats.Stat;
 
 import java.util.Optional;
 
@@ -31,7 +31,7 @@ import static org.l2j.gameserver.util.GameUtils.isPlayer;
  */
 public class MEvasionRateFinalizer implements IStatsFunction {
     @Override
-    public double calc(Creature creature, Optional<Double> base, Stats stat) {
+    public double calc(Creature creature, Optional<Double> base, Stat stat) {
         throwIfPresent(base);
 
         double baseValue = calcWeaponPlusBaseValue(creature, stat);
@@ -42,7 +42,7 @@ public class MEvasionRateFinalizer implements IStatsFunction {
             baseValue += (Math.sqrt(creature.getWIT()) * 3) + (level * 2);
 
             // Enchanted helm bonus
-            baseValue += calcEnchantBodyPart(creature, ItemTemplate.SLOT_HEAD);
+            baseValue += calcEnchantBodyPart(creature, BodyPart.HEAD);
         } else {
             // [Square(DEX)] * 6 + lvl;
             baseValue += (Math.sqrt(creature.getWIT()) * 3) + (level * 2);
@@ -50,7 +50,7 @@ public class MEvasionRateFinalizer implements IStatsFunction {
                 baseValue += (level - 69) + 2;
             }
         }
-        return validateValue(creature, Stats.defaultValue(creature, stat, baseValue), Double.NEGATIVE_INFINITY, Config.MAX_EVASION);
+        return validateValue(creature, Stat.defaultValue(creature, stat, baseValue), Double.NEGATIVE_INFINITY, Config.MAX_EVASION);
     }
 
     @Override

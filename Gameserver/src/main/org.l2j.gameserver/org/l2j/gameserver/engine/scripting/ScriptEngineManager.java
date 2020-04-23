@@ -19,16 +19,13 @@ import static org.l2j.commons.configuration.Configurator.getSettings;
  * Caches script engines and provides functionality for executing and managing scripts.
  *
  * @author KenM, HorridoJoho
+ * @author JoeAlisson
  */
 public final class ScriptEngineManager  {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ScriptEngineManager.class);
 
     public static final Path SCRIPT_FOLDER = getSettings(ServerSettings.class).dataPackDirectory().resolve("data/scripts");
-    private static final Path MASTER_HANDLER_FILE = Paths.get(SCRIPT_FOLDER.toString(), "org.l2j.scripts", "handlers", "MasterHandler.java");
-    private static final Path EFFECT_MASTER_HANDLER_FILE = Paths.get(SCRIPT_FOLDER.toString(), "org.l2j.scripts", "handlers", "EffectMasterHandler.java");
-    private static final Path SKILL_CONDITION_HANDLER_FILE = Paths.get(SCRIPT_FOLDER.toString(), "org.l2j.scripts", "handlers", "SkillConditionMasterHandler.java");
-    private static final Path CONDITION_HANDLER_FILE = Paths.get(SCRIPT_FOLDER.toString(), "org.l2j.scripts", "handlers", "ConditionMasterHandler.java");
 
     private final Map<String, IExecutionContext> extEngines = new HashMap<>();
     private IExecutionContext currentExecutionContext = null;
@@ -38,7 +35,14 @@ public final class ScriptEngineManager  {
     }
 
     public static void init() {
-        getInstance().loadEngines();
+        var instance = getInstance();
+        instance.loadEngines();
+        try {
+            instance.executeScriptInit();
+        } catch (Exception e) {
+            LOGGER.error("Could not execute Scripts Init", e);
+        }
+
     }
 
     private void loadEngines() {
@@ -58,12 +62,11 @@ public final class ScriptEngineManager  {
 
     private void registerEngine(IScriptingEngine engine, Properties props) {
         maybeSetProperties(engine.getLanguageName().toLowerCase(), props, engine);
+        LOGGER.info("{} {} ({} {})", engine.getEngineName(), engine.getEngineVersion(), engine.getLanguageName(), engine.getLanguageVersion());
         final IExecutionContext context = engine.createExecutionContext();
         for (String commonExtension : engine.getCommonFileExtensions()) {
             extEngines.put(commonExtension, context);
         }
-
-        LOGGER.info("{} {} ({} {})", engine.getEngineName(), engine.getEngineVersion(), engine.getLanguageName(), engine.getLanguageVersion());
     }
 
     private void maybeSetProperties(String language, Properties props, IScriptingEngine engine) {
@@ -108,28 +111,12 @@ public final class ScriptEngineManager  {
         }
     }
 
-    public void executeMasterHandler() throws Exception {
-        executeScript(MASTER_HANDLER_FILE);
+    public void executeScriptInit() throws Exception {
+        executeScripts("Init");
     }
 
-    public void executeEffectMasterHandler() throws Exception {
-        executeScript(EFFECT_MASTER_HANDLER_FILE);
-    }
-
-    public void executeSkillConditionMasterHandler() throws Exception {
-        executeScript(SKILL_CONDITION_HANDLER_FILE);
-    }
-
-    public void executeConditionMasterHandler() throws Exception {
-        executeScript(CONDITION_HANDLER_FILE);
-    }
-
-    public void executeScriptInitList() throws Exception {
-        if (Config.ALT_DEV_NO_QUESTS) {
-            return;
-        }
-
-        for (Entry<IExecutionContext, List<Path>> entry : parseScriptDirectory().entrySet()) {
+    private void executeScripts(String scriptsName) throws Exception {
+        for (Entry<IExecutionContext, List<Path>> entry : parseScriptDirectory(scriptsName).entrySet()) {
             currentExecutionContext = entry.getKey();
             try {
                 final Map<Path, Throwable> invokationErrors = currentExecutionContext.executeScripts(entry.getValue());
@@ -142,7 +129,15 @@ public final class ScriptEngineManager  {
         }
     }
 
-    private Map<IExecutionContext, List<Path>> parseScriptDirectory() throws IOException {
+    public void executeScriptLoader() throws Exception {
+        if (Config.ALT_DEV_NO_QUESTS) {
+            return;
+        }
+
+        executeScripts("Loader");
+    }
+
+    private Map<IExecutionContext, List<Path>> parseScriptDirectory(String names) throws IOException {
         Map<IExecutionContext, List<Path>> files = new HashMap<>();
 
         Files.walkFileTree(SCRIPT_FOLDER, new SimpleFileVisitor<>() {
@@ -151,7 +146,7 @@ public final class ScriptEngineManager  {
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                 var fileName = file.getFileName().toString();
 
-                if(attrs.isRegularFile() && fileName.startsWith("Init")) {
+                if(attrs.isRegularFile() && fileName.startsWith(names)) {
                     var ext = fileName.substring(fileName.lastIndexOf(".") +1);
 
                     if(ext.equals(fileName)) {

@@ -12061,14 +12061,6 @@ public final class NpcStringId {
     public static NpcStringId THE_GODDESS_RESURRECTION_HAS_ALREADY_BEGUN_HUHU_INSIGNIFICANT_CREATURES_LIKE_YOU_CAN_DO_NOTHING;
     @ClientString(id = 1010228, message = "Land of Winds (Lv. 78)")
     public static NpcStringId LAND_OF_WINDS_LV_78;
-    @ClientString(id = 1010229, message = "You have destroyed the Limit Barrier!")
-    public static NpcStringId YOU_HAVE_DESTROYED_THE_LIMIT_BARRIER;
-
-	@ClientString(id = 1010230, message = "You have failed to destroy the Limit Barrier.\nThe raid boss fully recovers its health.")
-    public static NpcStringId YOU_HAVE_FAILED_TO_DESTROY_THE_LIMIT_BARRIER_NTHE_RAID_BOSS_FULLY_RECOVERS_ITS_HEALTH;
-
-	@ClientString(id = 1010231, message = "The Raid Boss uses the Limit Barrier.\nFocus your attacks to destroy the Limit Barrier in 15 sec.")
-	public static NpcStringId THE_RAID_BOSS_USES_THE_LIMIT_BARRIER_NFOCUS_YOUR_ATTACKS_TO_DESTROY_THE_LIMIT_BARRIER_IN_15_SEC;
 
 	@ClientString(id = 1010232, message = "The Raid Boss has recovered its strength!")
 	public static NpcStringId THE_RAID_BOSS_HAS_RECOVERED_ITS_STRENGTH;
@@ -21215,10 +21207,6 @@ public final class NpcStringId {
     public static NpcStringId I_SEE_A_CHEST_FULL_OF_TREASURES;
     @ClientString(id = 1803683, message = "Antharas is trying to escape.")
     public static NpcStringId ANTHARAS_IS_TRYING_TO_ESCAPE;
-    @ClientString(id = 1803684, message = "Balthus Knights are looking for mercenaries!")
-    public static NpcStringId BALTHUS_KNIGHTS_ARE_LOOKING_FOR_MERCENARIES;
-    @ClientString(id = 1803685, message = "Let's join our forces and face this together!")
-    public static NpcStringId LET_S_JOIN_OUR_FORCES_AND_FACE_THIS_TOGETHER;
     @ClientString(id = 1803686, message = "Pretty good! Go to level 1 and get through with this!")
     public static NpcStringId PRETTY_GOOD_GO_TO_LEVEL_1_AND_GET_THROUGH_WITH_THIS;
     @ClientString(id = 1803687, message = "Wind Spirit King appeared somewhere close!")
@@ -24507,6 +24495,15 @@ public final class NpcStringId {
     @ClientString(id = 1000521, message = "Not even the gods themselves could touch me. But you, $s1, you dare challenge me?! Ignorant mortal!")
     public static NpcStringId NOT_EVEN_THE_GODS_THEMSELVES_COULD_TOUCH_ME_BUT_YOU_S1_YOU_DARE_CHALLENGE_ME_IGNORANT_MORTAL;
 
+    @ClientString(id = 1010229, message = "You have destroyed the Limit Barrier!")
+    public static NpcStringId YOU_HAVE_DESTROYED_THE_LIMIT_BARRIER;
+
+    @ClientString(id = 1010230, message = "You have failed to destroy the Limit Barrier.\nThe raid boss fully recovers its health.")
+    public static NpcStringId YOU_HAVE_FAILED_TO_DESTROY_THE_LIMIT_BARRIER_NTHE_RAID_BOSS_FULLY_RECOVERS_ITS_HEALTH;
+
+    @ClientString(id = 1010231, message = "The Raid Boss uses the Limit Barrier.\nFocus your attacks to destroy the Limit Barrier in 15 sec.")
+    public static NpcStringId THE_RAID_BOSS_USES_THE_LIMIT_BARRIER_NFOCUS_YOUR_ATTACKS_TO_DESTROY_THE_LIMIT_BARRIER_IN_15_SEC;
+
     @ClientString(id = 1300004, message = "You may have broken our arrows, but you will never break our will! Archers, retreat!")
     public static NpcStringId YOU_MAY_HAVE_BROKEN_OUR_ARROWS_BUT_YOU_WILL_NEVER_BREAK_OUR_WILL_ARCHERS_RETREAT;
 
@@ -24546,6 +24543,12 @@ public final class NpcStringId {
     @ClientString(id = 1803665, message = "Ha! Not bad.")
     public static NpcStringId HA_NOT_BAD;
 
+    @ClientString(id = 1803684, message = "Balthus Knights are looking for mercenaries!")
+    public static NpcStringId BALTHUS_KNIGHTS_ARE_LOOKING_FOR_MERCENARIES;
+
+    @ClientString(id = 1803685, message = "Let's join our forces and face this together!")
+    public static NpcStringId LET_S_JOIN_OUR_FORCES_AND_FACE_THIS_TOGETHER;
+
     @ClientString(id = 1803666, message = "Welcome to the Arena! Test your clan's strength!")
     public static NpcStringId WELCOME_TO_THE_ARENA_TEST_YOUR_CLAN_S_STRENGTH;
 
@@ -24554,6 +24557,154 @@ public final class NpcStringId {
 
     @ClientString(id = 1811308, message = "Speak with me about traveling around Aden.")
     public static NpcStringId SPEAK_WITH_ME_ABOUT_TRAVELING_AROUND_ADEN;
+
+    @ClientString(id = 596110, message = "Defeat the monsters on the Hill of Hope")
+    public static NpcStringId DEFEAT_THE_MONSTERS_ON_THE_HILL_OF_HOPE;
+
+    @ClientString(id = 596101, message = "|Lv. 2~20| Effective Training")
+    public static NpcStringId LV_2_20_EFFECTIVE_TRAINING;
+
+    @ClientString(id = 596201, message = "|Lv. 15~20| New Horizons")
+    public static NpcStringId LV_15_20_NEW_HORIZONS;
+
+    @ClientString(id = 1803751, message = "You've finished the tutorial.\nTake your 1st class transfer and complete your training with Bathis to become stronger.")
+    public static NpcStringId YOU_VE_FINISHED_THE_TUTORIAL_NTAKE_YOUR_1ST_CLASS_TRANSFER_AND_COMPLETE_YOUR_TRAINING_WITH_BATHIS_TO_BECOME_STRONGER;
+
+    @ClientString(id = 596210, message = "Defeat the monsters in the Golden Hills")
+    public static NpcStringId DEFEAT_THE_MONSTERS_IN_THE_GOLDEN_HILLS;
+
+    @ClientString(id = 596301, message = "|Lv. 34~37| Exploring the Ant Nest")
+    public static NpcStringId LV_34_37_EXPLORING_THE_ANT_NEST;
+
+    @ClientString(id = 596311, message = "Monsters of the Ant Nest are killed.\nUse the teleport to get to High Priest Raymond in Gludio.")
+    public static NpcStringId MONSTERS_OF_THE_ANT_NEST_ARE_KILLED_NUSE_THE_TELEPORT_TO_GET_TO_HIGH_PRIEST_RAYMOND_IN_GLUDIO;
+
+    @ClientString(id = 596305, message = "Defeat the monsters in the Ant Nest.")
+    public static NpcStringId DEFEAT_THE_MONSTERS_IN_THE_ANT_NEST;
+
+    @ClientString(id = 596401, message = "|Lv. 30~34| Secret Garden")
+    public static NpcStringId LV_30_34_SECRET_GARDEN;
+
+    @ClientString(id = 1803752, message = "The mission 'Adventurer's Journey II' is now available.\nClick the yellow question mark in the right bottom corner of your screen to see the quest's info.")
+    public static NpcStringId THE_MISSION_ADVENTURER_S_JOURNEY_II_IS_NOW_AVAILABLE_NCLICK_THE_YELLOW_QUESTION_MARK_IN_THE_RIGHT_BOTTOM_CORNER_OF_YOUR_SCREEN_TO_SEE_THE_QUEST_S_INFO;
+
+    @ClientString(id = 596411, message = "Monsters of the Gorgon Flower Garden are killed.\nUse the teleport to get to High Priest Raymond in Gludio.")
+    public static NpcStringId MONSTERS_OF_THE_GORGON_FLOWER_GARDEN_ARE_KILLED_NUSE_THE_TELEPORT_TO_GET_TO_HIGH_PRIEST_RAYMOND_IN_GLUDIO;
+
+    @ClientString(id = 596405, message = "Defeat the monsters in the Gorgon Flower Garden")
+    public static NpcStringId DEFEAT_THE_MONSTERS_IN_THE_GORGON_FLOWER_GARDEN;
+
+    @ClientString(id = 596501, message = "|Lv. 37~40| Death Mysteries")
+    public static NpcStringId LV_37_40_DEATH_MYSTERIES;
+
+    @ClientString(id = 1803787, message = "You've got Adventurer's Agathion Bracelet and Adventurer's Agathion - Griffin.\nComplete the tutorial and try to use the agathion.")
+    public static NpcStringId YOU_VE_GOT_ADVENTURER_S_AGATHION_BRACELET_AND_ADVENTURER_S_AGATHION_GRIFFIN_NCOMPLETE_THE_TUTORIAL_AND_TRY_TO_USE_THE_AGATHION;
+
+    @ClientString(id = 596511, message = "Monsters of the Death Pass are killed.\nUse the teleport or the Scroll of Escape to get to High Priest Maximilian in Giran.")
+    public static NpcStringId MONSTERS_OF_THE_DEATH_PASS_ARE_KILLED_NUSE_THE_TELEPORT_OR_THE_SCROLL_OF_ESCAPE_TO_GET_TO_HIGH_PRIEST_MAXIMILIAN_IN_GIRAN;
+
+    @ClientString(id = 596506, message = "Defeat the monsters in the Death Pass")
+    public static NpcStringId DEFEAT_THE_MONSTERS_IN_THE_DEATH_PASS;
+
+    @ClientString(id = 596601, message = "|Lv. 20~25| A Trip Begins")
+    public static NpcStringId LV_20_25_A_TRIP_BEGINS;
+
+    @ClientString(id = 596605, message = "Talk to Bella")
+    public static NpcStringId TALK_TO_BELLA;
+
+    @ClientString(id = 596606, message = "Defeat the monsters in the Ruins of Agony.")
+    public static NpcStringId DEFEAT_THE_MONSTERS_IN_THE_RUINS_OF_AGONY;
+
+    @ClientString(id = 596701, message = "|Lv. 25~30| More Experience")
+    public static NpcStringId LV_25_30_MORE_EXPERIENCE;
+
+    @ClientString(id = 596711, message = "Monsters of the Abandoned Camp are killed.\nUse the teleport to get to Bathis in Gludio.")
+    public static NpcStringId MONSTERS_OF_THE_ABANDONED_CAMP_ARE_KILLED_NUSE_THE_TELEPORT_TO_GET_TO_BATHIS_IN_GLUDIO;
+
+    @ClientString(id = 596705, message = "Defeat the monsters in the Abandoned Camp.")
+    public static NpcStringId DEFEAT_THE_MONSTERS_IN_THE_ABANDONED_CAMP;
+
+    @ClientString(id = 103111, message = "Kill Wolves and Bearded Keltirs.")
+    public static NpcStringId KILL_WOLVES_AND_BEARDED_KELTIRS;
+
+    @ClientString(id = 103101, message = "|Lv. 2~20| Unbearable Wolves' Howling")
+    public static NpcStringId LV_2_20_UNBEARABLE_WOLVES_HOWLING;
+
+    @ClientString(id = 103211, message = "Kill Giant Spiders.")
+    public static NpcStringId KILL_GIANT_SPIDERS;
+
+    @ClientString(id = 103201, message = "|Lv. 15~20| Spider Hunt")
+    public static NpcStringId LV_15_20_SPIDER_HUNT;
+
+    @ClientString(id = 103311, message = "Kill Orcs and Goblins.")
+    public static NpcStringId KILL_ORCS_AND_GOBLINS;
+
+    @ClientString(id = 103301, message = "|Lv. 2~20| Troubled Forest")
+    public static NpcStringId LV_2_20_TROUBLED_FOREST;
+
+    @ClientString(id = 103402, message = "|Lv. 15~20| Spider Web (In progress)")
+    public static NpcStringId LV_15_20_SPIDER_WEB_IN_PROGRESS;
+
+    @ClientString(id = 103401, message = "|Lv. 15~20| Spider Web")
+    public static NpcStringId LV_15_20_SPIDER_WEB;
+
+    @ClientString(id = 103511, message = "Kill monsters near the village.")
+    public static NpcStringId KILL_MONSTERS_NEAR_THE_VILLAGE;
+
+    @ClientString(id = 103501, message = "|Lv. 2~20| Cleaning-up the Grounds")
+    public static NpcStringId LV_2_20_CLEANING_UP_THE_GROUNDS;
+
+    @ClientString(id = 103611, message = "Kill Zombies and Dark Horrors.")
+    public static NpcStringId KILL_ZOMBIES_AND_DARK_HORRORS;
+
+    @ClientString(id = 103601, message = "|Lv. 15~20| Terrible swamp monsters")
+    public static NpcStringId LV_15_20_TERRIBLE_SWAMP_MONSTERS;
+
+    @ClientString(id = 103711, message = "Track down grave robbers.")
+    public static NpcStringId TRACK_DOWN_GRAVE_ROBBERS;
+
+    @ClientString(id = 103701, message = "|Lv. 2~20| Plundered Graves")
+    public static NpcStringId LV_2_20_PLUNDERED_GRAVES;
+
+    @ClientString(id = 103801, message = "|Lv. 15~20| Conspiracy")
+    public static NpcStringId LV_15_20_CONSPIRACY;
+
+    @ClientString(id = 103811, message = "Expose a plot of Maraku Werewolves.")
+    public static NpcStringId EXPOSE_A_PLOT_OF_MARAKU_WEREWOLVES;
+
+    @ClientString(id = 103911, message = "Kill Wolves and Bearded Keltirs.")
+    public static NpcStringId KILL_WOLVES_AND_BEARDED_KELTIRS_2;
+
+    @ClientString(id = 103901, message = "|Lv. 2~20| Dangerous Predators")
+    public static NpcStringId LV_2_20_DANGEROUS_PREDATORS;
+
+    @ClientString(id = 104002, message = "|Lv. 15~20| Poison Extraction (In progress)")
+    public static NpcStringId LV_15_20_POISON_EXTRACTION_IN_PROGRESS;
+
+    @ClientString(id = 104001, message = "|Lv. 15~20| Poison Extraction")
+    public static NpcStringId LV_15_20_POISON_EXTRACTION;
+
+    @ClientString(id = 1000526, message = "Mournful Chorale Prelude")
+    public static NpcStringId MOURNFUL_CHORALE_PRELUDE;
+
+    @ClientString(id = 1000522, message = "Requiem of Hatred")
+    public static NpcStringId REQUIEM_OF_HATRED;
+
+    @ClientString(id = 1000523, message = "Fugue of Jubilation")
+    public static NpcStringId FUGUE_OF_JUBILATION;
+
+    @ClientString(id = 1000524, message = "Frenetic Toccata")
+    public static NpcStringId FRENETIC_TOCCATA;
+
+    @ClientString(id = 1000525, message = "Hypnotic Mazurka")
+    public static NpcStringId HYPNOTIC_MAZURKA;
+
+    @ClientString(id = 1000527, message = "Rondo of Solitude")
+    public static NpcStringId RONDO_OF_SOLITUDE;
+
+    @ClientString(id = 104505, message = "Orven's Request")
+    public static NpcStringId ORVEN_S_REQUEST;
+
 
     private static IntMap<NpcStringId> VALUES = new HashIntMap<>();
 

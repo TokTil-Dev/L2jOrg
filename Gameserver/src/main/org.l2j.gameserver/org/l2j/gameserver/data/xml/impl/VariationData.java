@@ -1,6 +1,9 @@
 package org.l2j.gameserver.data.xml.impl;
 
-import org.l2j.gameserver.datatables.ItemTable;
+import io.github.joealisson.primitive.Containers;
+import io.github.joealisson.primitive.HashIntMap;
+import io.github.joealisson.primitive.IntMap;
+import org.l2j.gameserver.engine.item.ItemEngine;
 import org.l2j.gameserver.model.VariationInstance;
 import org.l2j.gameserver.model.items.instance.Item;
 import org.l2j.gameserver.model.options.*;
@@ -18,29 +21,29 @@ import static org.l2j.commons.configuration.Configurator.getSettings;
 
 /**
  * @author Pere
+ * @author JoeAlisson
  */
 public class VariationData extends GameXmlReader {
-    private static final Logger LOGGER = LoggerFactory.getLogger(VariationData.class.getSimpleName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(VariationData.class);
 
-    private final Map<Integer, Variation> _variations = new HashMap<>();
-    private final Map<Integer, Map<Integer, VariationFee>> _fees = new HashMap<>();
+    private final IntMap<Variation> variations = new HashIntMap<>();
+    private final IntMap<IntMap<VariationFee>> fees = new HashIntMap<>();
 
     private VariationData() {
-        load();
     }
 
     @Override
     protected Path getSchemaFilePath() {
-        return getSettings(ServerSettings.class).dataPackDirectory().resolve("data/xsd/Variations.xsd");
+        return getSettings(ServerSettings.class).dataPackDirectory().resolve("data/augmentation/Variations.xsd");
     }
 
     @Override
     public void load() {
-        _variations.clear();
-        _fees.clear();
-        parseDatapackFile("data/stats/augmentation/Variations.xml");
-        LOGGER.info("Loaded {} Variations.", _variations.size() );
-        LOGGER.info("Loaded {} Fees.", _fees.size());
+        variations.clear();
+        fees.clear();
+        parseDatapackFile("data/augmentation/Variations.xml");
+        LOGGER.info("Loaded {} Variations.", variations.size() );
+        LOGGER.info("Loaded {} Fees.", fees.size());
     }
 
     @Override
@@ -52,7 +55,7 @@ public class VariationData extends GameXmlReader {
                 forEach(variationsNode, "variation", variationNode ->
                 {
                     final int mineralId = parseInteger(variationNode.getAttributes(), "mineralId");
-                    if (ItemTable.getInstance().getTemplate(mineralId) == null) {
+                    if (ItemEngine.getInstance().getTemplate(mineralId) == null) {
                         LOGGER.warn("Mineral with item id {}  was not found.", mineralId);
                     }
                     final Variation variation = new Variation(mineralId);
@@ -72,7 +75,7 @@ public class VariationData extends GameXmlReader {
                             {
                                 final double optionChance = parseDouble(optionNode.getAttributes(), "chance");
                                 final int optionId = parseInteger(optionNode.getAttributes(), "id");
-                                final Options opt = OptionData.getInstance().getOptions(optionId);
+                                final Options opt = AugmentationEngine.getInstance().getOptions(optionId);
                                 if (opt == null) {
                                     LOGGER.warn(": Null option for id " + optionId);
                                     return;
@@ -85,7 +88,7 @@ public class VariationData extends GameXmlReader {
                                 final int fromId = parseInteger(optionNode.getAttributes(), "from");
                                 final int toId = parseInteger(optionNode.getAttributes(), "to");
                                 for (int id = fromId; id <= toId; id++) {
-                                    final Options op = OptionData.getInstance().getOptions(id);
+                                    final Options op = AugmentationEngine.getInstance().getOptions(id);
                                     if (op == null) {
                                         LOGGER.warn(": Null option for id " + id);
                                         return;
@@ -100,7 +103,7 @@ public class VariationData extends GameXmlReader {
                         variation.setEffectGroup(weaponType, order, new OptionDataGroup(sets));
                     });
 
-                    _variations.put(mineralId, variation);
+                    variations.put(mineralId, variation);
                 });
             });
 
@@ -114,7 +117,7 @@ public class VariationData extends GameXmlReader {
                     forEach(variationNode, "item", itemNode ->
                     {
                         final int itemId = parseInteger(itemNode.getAttributes(), "id");
-                        if (ItemTable.getInstance().getTemplate(itemId) == null) {
+                        if (ItemEngine.getInstance().getTemplate(itemId) == null) {
                             LOGGER.warn(": Item with id " + itemId + " was not found.");
                         }
                         items.add(itemId);
@@ -133,12 +136,12 @@ public class VariationData extends GameXmlReader {
                     final int itemId = parseInteger(feeNode.getAttributes(), "itemId");
                     final int itemCount = parseInteger(feeNode.getAttributes(), "itemCount");
                     final int cancelFee = parseInteger(feeNode.getAttributes(), "cancelFee");
-                    if (ItemTable.getInstance().getTemplate(itemId) == null) {
+                    if (ItemEngine.getInstance().getTemplate(itemId) == null) {
                         LOGGER.warn(": Item with id " + itemId + " was not found.");
                     }
 
                     final VariationFee fee = new VariationFee(itemId, itemCount, cancelFee);
-                    final Map<Integer, VariationFee> feeByMinerals = new HashMap<>();
+                    final IntMap<VariationFee> feeByMinerals = new HashIntMap<>();
                     forEach(feeNode, "mineral", mineralNode ->
                     {
                         final int mId = parseInteger(mineralNode.getAttributes(), "id");
@@ -154,20 +157,12 @@ public class VariationData extends GameXmlReader {
                     });
 
                     for (int item : itemGroup) {
-                        Map<Integer, VariationFee> fees = _fees.computeIfAbsent(item, k -> new HashMap<>());
+                        var fees = this.fees.computeIfAbsent(item, k -> new HashIntMap<>());
                         fees.putAll(feeByMinerals);
                     }
                 });
             });
         });
-    }
-
-    public int getVariationCount() {
-        return _variations.size();
-    }
-
-    public int getFeeCount() {
-        return _fees.size();
     }
 
     /**
@@ -189,15 +184,15 @@ public class VariationData extends GameXmlReader {
     }
 
     public final Variation getVariation(int mineralId) {
-        return _variations.get(mineralId);
+        return variations.get(mineralId);
     }
 
     public final VariationFee getFee(int itemId, int mineralId) {
-        return _fees.getOrDefault(itemId, Collections.emptyMap()).get(mineralId);
+        return fees.getOrDefault(itemId, Containers.emptyIntMap()).get(mineralId);
     }
 
     public final long getCancelFee(int itemId, int mineralId) {
-        final Map<Integer, VariationFee> fees = _fees.get(itemId);
+        var fees = this.fees.get(itemId);
         if (fees == null) {
             return -1;
         }
@@ -216,8 +211,13 @@ public class VariationData extends GameXmlReader {
     }
 
     public final boolean hasFeeData(int itemId) {
-        Map<Integer, VariationFee> itemFees = _fees.get(itemId);
+        var itemFees = fees.get(itemId);
         return (itemFees != null) && !itemFees.isEmpty();
+    }
+
+
+    public static void init() {
+        getInstance().load();
     }
 
     public static VariationData getInstance() {

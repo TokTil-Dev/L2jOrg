@@ -22,7 +22,7 @@ import org.l2j.gameserver.model.events.impl.character.npc.OnAttackableFactionCal
 import org.l2j.gameserver.model.events.impl.character.npc.OnAttackableHate;
 import org.l2j.gameserver.model.events.returns.TerminateReturn;
 import org.l2j.gameserver.model.items.instance.Item;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.model.skills.SkillCaster;
 import org.l2j.gameserver.world.zone.ZoneType;
 import org.l2j.gameserver.util.GameUtils;
@@ -36,6 +36,7 @@ import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.stream.Stream;
 
+import static java.util.Objects.nonNull;
 import static org.l2j.gameserver.util.GameUtils.*;
 import static org.l2j.gameserver.util.MathUtil.*;
 
@@ -232,12 +233,12 @@ public class AttackableAI extends CreatureAI {
 
         // self and buffs
         if ((lastBuffTick + 30) < WorldTimeController.getInstance().getGameTicks()) {
-            for (Skill buff : getActiveChar().getTemplate().getAISkills(AISkillScope.BUFF)) {
-                target = skillTargetReconsider(buff, true);
-                if (target != null) {
-                    setTarget(target);
+            for (var buff : getActiveChar().getTemplate().getAISkills(AISkillScope.BUFF)) {
+                var buffTarget = skillTargetReconsider(buff, true);
+                if (nonNull(buffTarget)) {
+                    setTarget(buffTarget);
                     actor.doCast(buff);
-                    LOGGER.debug(this + " used buff skill " + buff + " on " + actor);
+                    setTarget(target);
                     break;
                 }
             }
@@ -480,7 +481,7 @@ public class AttackableAI extends CreatureAI {
             npc.setWalking();
 
             // Monster teleport to spawn
-            if (isMonster(npc) && (npc.getSpawn() != null) && !npc.isInInstance()) {
+            if (isMonster(npc) && (npc.getSpawn() != null) && !npc.isInInstance() && (npc.isInCombat() || !World.getInstance().hasVisiblePlayer(npc))) {
                 npc.teleToLocation(npc.getSpawn(), false);
             }
             return;
@@ -763,7 +764,7 @@ public class AttackableAI extends CreatureAI {
             }
 
             // Check if target had buffs if skill is bad cancel, or debuffs if skill is good cancel.
-            if (skill.hasEffectType(EffectType.DISPEL, EffectType.DISPEL_BY_SLOT)) {
+            if (skill.hasAnyEffectType(EffectType.DISPEL, EffectType.DISPEL_BY_SLOT)) {
                 if (skill.isBad()) {
                     if (((Creature) target).getEffectList().getBuffCount() == 0) {
                         return false;
@@ -774,7 +775,7 @@ public class AttackableAI extends CreatureAI {
             }
 
             // Check for damaged targets if using healing skill.
-            return (((Creature) target).getCurrentHp() != ((Creature) target).getMaxHp()) || !skill.hasEffectType(EffectType.HEAL);
+            return (((Creature) target).getCurrentHp() != ((Creature) target).getMaxHp()) || !skill.hasAnyEffectType(EffectType.HEAL);
         }
 
         return true;
@@ -832,7 +833,7 @@ public class AttackableAI extends CreatureAI {
             //@formatter:on
         } else {
 
-            if (skill.hasEffectType(EffectType.HEAL)) {
+            if (skill.hasAnyEffectType(EffectType.HEAL)) {
                 return World.getInstance().findFirstVisibleObject(npc, Creature.class, range, true, c -> checkSkillTarget(skill, c), Comparator.comparingInt(Creature::getCurrentHpPercent));
             }
             return World.getInstance().findAnyVisibleObject(npc, Creature.class, range, true, c -> checkSkillTarget(skill, c));

@@ -1,13 +1,13 @@
 package org.l2j.gameserver.network.serverpackets;
 
-import org.l2j.gameserver.datatables.ItemTable;
+import org.l2j.gameserver.engine.item.ItemEngine;
 import org.l2j.gameserver.model.actor.Npc;
 import org.l2j.gameserver.model.actor.Summon;
 import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.model.actor.templates.NpcTemplate;
 import org.l2j.gameserver.model.items.ItemTemplate;
 import org.l2j.gameserver.model.items.instance.Item;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.network.SystemMessageId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -162,21 +162,20 @@ public abstract class AbstractMessagePacket<T extends AbstractMessagePacket<?>> 
     }
 
     public T addItemName(Item item) {
-        return addItemName(item.getId());
+        return addItemName(item.getTemplate());
     }
 
     public T addItemName(ItemTemplate item) {
-        return addItemName(item.getId());
-    }
-
-    public final T addItemName(int id) {
-        final ItemTemplate item = ItemTable.getInstance().getTemplate(id);
-        if (item.getDisplayId() != id) {
+        if (item.getDisplayId() != item.getId()) {
             return addString(item.getName());
         }
 
-        append(new SMParam(TYPE_ITEM_NAME, id));
+        append(new SMParam(TYPE_ITEM_NAME, item.getId()));
         return (T) this;
+    }
+
+    public final T addItemName(int id) {
+        return addItemName(ItemEngine.getInstance().getTemplate(id));
     }
 
     public final T addZoneName(int x, int y, int z) {

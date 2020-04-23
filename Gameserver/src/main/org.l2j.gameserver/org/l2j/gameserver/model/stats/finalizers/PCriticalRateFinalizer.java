@@ -2,10 +2,10 @@ package org.l2j.gameserver.model.stats.finalizers;
 
 import org.l2j.gameserver.Config;
 import org.l2j.gameserver.model.actor.Creature;
-import org.l2j.gameserver.model.items.ItemTemplate;
+import org.l2j.gameserver.model.items.BodyPart;
 import org.l2j.gameserver.model.stats.BaseStats;
 import org.l2j.gameserver.model.stats.IStatsFunction;
-import org.l2j.gameserver.model.stats.Stats;
+import org.l2j.gameserver.model.stats.Stat;
 
 import java.util.Optional;
 
@@ -16,16 +16,16 @@ import static org.l2j.gameserver.util.GameUtils.isPlayer;
  */
 public class PCriticalRateFinalizer implements IStatsFunction {
     @Override
-    public double calc(Creature creature, Optional<Double> base, Stats stat) {
+    public double calc(Creature creature, Optional<Double> base, Stat stat) {
         throwIfPresent(base);
 
         double baseValue = calcWeaponBaseValue(creature, stat);
         if (isPlayer(creature)) {
             // Enchanted legs bonus
-            baseValue += calcEnchantBodyPart(creature, ItemTemplate.SLOT_LEGS);
+            baseValue += calcEnchantBodyPart(creature, BodyPart.LEGS);
         }
         final double dexBonus = creature.getDEX() > 0 ? BaseStats.DEX.calcBonus(creature) : 1.;
-        return validateValue(creature, Stats.defaultValue(creature, stat, baseValue * dexBonus * 10), 0, Config.MAX_PCRIT_RATE);
+        return validateValue(creature, Stat.defaultValue(creature, stat, baseValue * dexBonus * 10), 0, Config.MAX_PCRIT_RATE);
     }
 
     @Override

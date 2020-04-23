@@ -1,19 +1,3 @@
-/*
- * This file is part of the L2J Mobius project.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
 package org.l2j.gameserver.model.items.type;
 
 /**
@@ -39,12 +23,14 @@ public enum EtcItemType implements ItemType {
     LURE,
     CROP,
     MATURECROP,
-    ENCHT_WP,
-    ENCHT_AM,
-    GIANT_ENCHT_WP,
-    GIANT_ENCHT_AM,
+    ENCHANT_WEAPON,
+    ENCHANT_ARMOR,
+    BLESSED_ENCHANT_WEAPON,
+    BLESSED_ENCHANT_ARMOR,
     BLESS_ENCHT_WP,
     BLESS_ENCHT_AM,
+    GIANT_ENCHT_AM,
+    GIANT_ENCHT_WP,
     COUPON,
     ELIXIR,
     ENCHT_ATTR,
@@ -54,8 +40,9 @@ public enum EtcItemType implements ItemType {
     ENCHT_ATTR_INC_PROP_ENCHT_AM,
     BLESSED_ENCHT_ATTR_INC_PROP_ENCHT_WP,
     BLESSED_ENCHT_ATTR_INC_PROP_ENCHT_AM,
-    BLESSED_GIANT_ENCHT_ATTR_INC_PROP_ENCHT_WP,
-    BLESSED_GIANT_ENCHT_ATTR_INC_PROP_ENCHT_AM,
+    SOLID_ENCHANT_ARMOR,
+    SOLID_ENCHANT_WEAPON,
+    RUNE,
     GIANT_ENCHT_ATTR_INC_PROP_ENCHT_WP,
     GIANT_ENCHT_ATTR_INC_PROP_ENCHT_AM,
     ENCHT_ATTR_CRYSTAL_ENCHANT_AM,
@@ -64,7 +51,7 @@ public enum EtcItemType implements ItemType {
     ENCHT_ATTR_ANCIENT_CRYSTAL_ENCHANT_WP,
     ENCHT_ATTR_RUNE,
     ENCHT_ATTRT_RUNE_SELECT,
-    TELEPORTBOOKMARK,
+    TELEPORT_BOOKMARK,
     CHANGE_ATTR,
     SOULSHOT,
     SHAPE_SHIFTING_WP,
@@ -90,7 +77,28 @@ public enum EtcItemType implements ItemType {
     MULTI_INC_PROB_ENCHT_WP,
     MULTI_INC_PROB_ENCHT_AM,
     SOUL_CRYSTAL,
-    ENSOUL_STONE;
+    CARD,
+    SEVEN_SINS_AGATHION_ENCHANT,
+    AGATHION_ENCHANT,
+    IMPROVED_ENCHANT_WEAPON,
+    IMPROVED_ENCHANT_ARMOR,
+    SIGEL_RUNE,
+    COLOR_CHANGE,
+    COLOR_TITLE_CHANGE,
+    ENSOUL_STONE,
+    SEAL_SCROLL,
+    UNSEAL_SCROLL,
+    TRANSFORMATION_BOOK,
+    TRANSFORMATION_BOOK_BOX_RANDOM,
+    TRANSFORMATION_BOOK_BOX_RANDOM_RARE,
+    TRANSFORMATION_BOOK_BOX_HIGH_GRADE,
+    TRANSFORMATION_BOOK_BOX_STANDARD,
+    TRANSFORMATION_BOOK_BOX_RARE,
+    TRANSFORMATION_BOOK_BOX_LEGENDARY,
+    LUCKY_ENCHANT,
+    GIANT_ENCHANT,
+    BLESSED_LUCKY_ENCHANT,
+    QUALITY_AGATHION_ENCHANT;
 
     /**
      * @return the ID of the item after applying the mask.

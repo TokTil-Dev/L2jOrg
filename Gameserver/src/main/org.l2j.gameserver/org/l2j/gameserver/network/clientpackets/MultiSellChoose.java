@@ -3,7 +3,7 @@ package org.l2j.gameserver.network.clientpackets;
 import org.l2j.commons.util.CommonUtil;
 import org.l2j.gameserver.data.xml.impl.EnsoulData;
 import org.l2j.gameserver.data.xml.impl.MultisellData;
-import org.l2j.gameserver.datatables.ItemTable;
+import org.l2j.gameserver.engine.item.ItemEngine;
 import org.l2j.gameserver.enums.AttributeType;
 import org.l2j.gameserver.enums.SpecialItemType;
 import org.l2j.gameserver.model.Clan;
@@ -14,7 +14,7 @@ import org.l2j.gameserver.model.ensoul.EnsoulOption;
 import org.l2j.gameserver.model.holders.ItemChanceHolder;
 import org.l2j.gameserver.model.holders.MultisellEntryHolder;
 import org.l2j.gameserver.model.holders.PreparedMultisellListHolder;
-import org.l2j.gameserver.model.itemcontainer.PcInventory;
+import org.l2j.gameserver.model.itemcontainer.PlayerInventory;
 import org.l2j.gameserver.model.items.CommonItem;
 import org.l2j.gameserver.model.items.ItemTemplate;
 import org.l2j.gameserver.model.items.enchant.attribute.AttributeHolder;
@@ -31,6 +31,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.OptionalLong;
 
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+import static org.l2j.gameserver.model.actor.Npc.INTERACTION_DISTANCE;
 import static org.l2j.gameserver.util.MathUtil.isInsideRadius3D;
 
 /**
@@ -109,10 +112,21 @@ public class MultiSellChoose extends ClientPacket {
         }
 
         final Npc npc = player.getLastFolkNPC();
-        if (!list.isNpcAllowed(-1) && !isAllowedToUse(player, npc, list)) {
-            if (player.isGM()) {
-                player.sendMessage("Multisell " + _listId + " is restricted. Under current conditions cannot be used. Only GMs are allowed to use it.");
-            } else {
+        if (!list.isNpcAllowed(-1)) {
+            if (isNull(npc) || !list.isNpcAllowed(npc.getId())) {
+                if (player.isGM()) {
+                    player.sendMessage("Multisell " + _listId + " is restricted. Under current conditions cannot be used. Only GMs are allowed to use it.");
+                } else {
+                    player.setMultiSell(null);
+                    return;
+                }
+            }
+        }
+
+        if (!player.isGM() && nonNull(npc))
+        {
+            if (!isInsideRadius3D(player, npc, INTERACTION_DISTANCE) || (player.getInstanceId() != npc.getInstanceId()))
+            {
                 player.setMultiSell(null);
                 return;
             }
@@ -166,7 +180,7 @@ public class MultiSellChoose extends ClientPacket {
         }
 
         final Clan clan = player.getClan();
-        final PcInventory inventory = player.getInventory();
+        final PlayerInventory inventory = player.getInventory();
 
         try {
             int slots = 0;
@@ -182,7 +196,7 @@ public class MultiSellChoose extends ClientPacket {
                     continue;
                 }
 
-                final ItemTemplate template = ItemTable.getInstance().getTemplate(product.getId());
+                final ItemTemplate template = ItemEngine.getInstance().getTemplate(product.getId());
                 if (template == null) {
                     player.setMultiSell(null);
                     return;
@@ -221,7 +235,7 @@ public class MultiSellChoose extends ClientPacket {
             // Check for enchanted item if its present in the inventory.
             if ((itemEnchantment != null) && (inventory.getItemByObjectId(itemEnchantment.getObjectId()) == null)) {
                 SystemMessage sm = SystemMessage.getSystemMessage(SystemMessageId.YOU_NEED_A_N_S1);
-                sm.addItemName(itemEnchantment.getItem().getId());
+                sm.addItemName(itemEnchantment.getId());
                 player.sendPacket(sm);
                 return;
             }
@@ -239,7 +253,7 @@ public class MultiSellChoose extends ClientPacket {
 
                     if (found < ingredient.getCount()) {
                         final SystemMessage sm = SystemMessage.getSystemMessage(SystemMessageId.YOU_NEED_A_N_S1);
-                        sm.addString("+" + ingredient.getEnchantmentLevel() + " " + ItemTable.getInstance().getTemplate(ingredient.getId()).getName());
+                        sm.addString("+" + ingredient.getEnchantmentLevel() + " " + ItemEngine.getInstance().getTemplate(ingredient.getId()).getName());
                         player.sendPacket(sm);
                         return;
                     }
@@ -305,7 +319,7 @@ public class MultiSellChoose extends ClientPacket {
                         player.sendPacket(sm);
                         return;
                     }
-                } else if (!itemEnchantmentProcessed && (itemEnchantment != null) && (itemEnchantment.getItem().getId() == ingredient.getId())) {
+                } else if (!itemEnchantmentProcessed && (itemEnchantment != null) && (itemEnchantment.getId() == ingredient.getId())) {
                     // Take the enchanted item.
                     final Item destroyedItem = inventory.destroyItem("Multisell", itemEnchantment.getObjectId(), totalCount, player, npc);
                     if (destroyedItem != null) {
@@ -372,7 +386,7 @@ public class MultiSellChoose extends ClientPacket {
                     final Item addedItem = inventory.addItem("Multisell", product.getId(), totalCount, player, npc, false);
 
                     // Check if the newly given item should be enchanted.
-                    if (itemEnchantmentProcessed && list.isMaintainEnchantment() && (itemEnchantment != null) && addedItem.isEquipable() && addedItem.getItem().getClass().equals(itemEnchantment.getItem().getClass())) {
+                    if (itemEnchantmentProcessed && list.isMaintainEnchantment() && (itemEnchantment != null) && addedItem.isEquipable() && addedItem.getTemplate().getClass().equals(itemEnchantment.getTemplate().getClass())) {
                         addedItem.setEnchantLevel(itemEnchantment.getEnchantLevel());
                         addedItem.setAugmentation(itemEnchantment.getAugmentation(), false);
                         if (addedItem.isWeapon())
@@ -481,7 +495,7 @@ public class MultiSellChoose extends ClientPacket {
      * @param totalCount
      * @return {@code false} if ingredient amount is not enough, {@code true} otherwise.
      */
-    private boolean checkIngredients(Player player, PreparedMultisellListHolder list, PcInventory inventory, Clan clan, int ingredientId, long totalCount) {
+    private boolean checkIngredients(Player player, PreparedMultisellListHolder list, PlayerInventory inventory, Clan clan, int ingredientId, long totalCount) {
         final SpecialItemType specialItem = SpecialItemType.getByClientId(ingredientId);
         if (specialItem != null) {
             // Check special item.
@@ -535,25 +549,6 @@ public class MultiSellChoose extends ClientPacket {
             return false;
         }
 
-        return true;
-    }
-
-    /**
-     * @param player
-     * @param npc
-     * @param list
-     * @return {@code true} if player can buy stuff from the multisell, {@code false} otherwise.
-     */
-    private boolean isAllowedToUse(Player player, Npc npc, PreparedMultisellListHolder list) {
-        if (npc != null) {
-            if (!list.isNpcAllowed(npc.getId())) {
-                return false;
-            } else if (list.isNpcOnly() && (!list.checkNpcObjectId(npc.getObjectId()) || (npc.getInstanceWorld() != player.getInstanceWorld()) || !isInsideRadius3D(player, npc, Npc.INTERACTION_DISTANCE))) {
-                return false;
-            }
-        } else if (list.isNpcOnly()) {
-            return false;
-        }
         return true;
     }
 }

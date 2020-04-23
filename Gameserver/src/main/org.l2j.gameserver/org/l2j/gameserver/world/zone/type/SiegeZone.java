@@ -1,11 +1,12 @@
 package org.l2j.gameserver.world.zone.type;
 
 import org.l2j.gameserver.Config;
-import org.l2j.gameserver.data.xml.impl.SkillData;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
 import org.l2j.gameserver.enums.MountType;
 import org.l2j.gameserver.instancemanager.FortDataManager;
 import org.l2j.gameserver.instancemanager.FortSiegeManager;
 import org.l2j.gameserver.model.actor.transform.Transform;
+import org.l2j.gameserver.model.items.BodyPart;
 import org.l2j.gameserver.world.zone.ZoneManager;
 import org.l2j.gameserver.model.TeleportWhereType;
 import org.l2j.gameserver.model.actor.Creature;
@@ -14,7 +15,7 @@ import org.l2j.gameserver.model.entity.Fort;
 import org.l2j.gameserver.model.entity.FortSiege;
 import org.l2j.gameserver.model.entity.Siegable;
 import org.l2j.gameserver.model.skills.BuffInfo;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.world.zone.AbstractZoneSettings;
 import org.l2j.gameserver.world.zone.Zone;
 import org.l2j.gameserver.world.zone.ZoneType;
@@ -117,19 +118,19 @@ public class SiegeZone extends Zone {
         }
 
         if (isPlayer(creature)) {
-            final Player activeChar = creature.getActingPlayer();
-            activeChar.stopFameTask();
-            activeChar.setIsInSiege(false);
+            final Player player = creature.getActingPlayer();
+            player.stopFameTask();
+            player.setIsInSiege(false);
 
-            if ((getSettings().getSiege() instanceof FortSiege) && (activeChar.getInventory().getItemByItemId(9819) != null)) {
+            if ((getSettings().getSiege() instanceof FortSiege) && (player.getInventory().getItemByItemId(9819) != null)) {
                 // drop combat flag
                 final Fort fort = FortDataManager.getInstance().getFortById(getSettings().getSiegeableId());
                 if (fort != null) {
-                    FortSiegeManager.getInstance().dropCombatFlag(activeChar, fort.getResidenceId());
+                    FortSiegeManager.getInstance().dropCombatFlag(player, fort.getId());
                 } else {
-                    final long slot = activeChar.getInventory().getSlotFromItem(activeChar.getInventory().getItemByItemId(9819));
-                    activeChar.getInventory().unEquipItemInBodySlot(slot);
-                    activeChar.destroyItem("CombatFlag", activeChar.getInventory().getItemByItemId(9819), null, true);
+                    var bodyPart = BodyPart.fromEquippedPaperdoll(player.getInventory().getItemByItemId(9819));
+                    player.getInventory().unEquipItemInBodySlot(bodyPart);
+                    player.destroyItem("CombatFlag", player.getInventory().getItemByItemId(9819), null, true);
                 }
             }
         }
@@ -146,7 +147,7 @@ public class SiegeZone extends Zone {
                     lvl = Math.min(lvl + info.getSkill().getLevel(), 5);
                 }
 
-                final Skill skill = SkillData.getInstance().getSkill(5660, lvl);
+                final Skill skill = SkillEngine.getInstance().getSkill(5660, lvl);
                 if (skill != null) {
                     skill.applyEffects(creature, creature);
                 }

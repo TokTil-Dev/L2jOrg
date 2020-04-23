@@ -1,29 +1,28 @@
 package org.l2j.gameserver.network.clientpackets;
 
+import org.l2j.gameserver.data.database.data.Shortcut;
 import org.l2j.gameserver.enums.ShortcutType;
-import org.l2j.gameserver.model.Shortcut;
-import org.l2j.gameserver.network.serverpackets.ShortCutRegister;
+import org.l2j.gameserver.model.items.instance.Item;
 
-import static org.l2j.gameserver.network.SystemMessageId.ONLY_MACROS_CAN_BE_REGISTERED;
+import static java.util.Objects.isNull;
 
+/**
+ * @author JoeAlisson
+ */
 public final class RequestShortCutReg extends ClientPacket {
-    private static final int AUTO_PLAY_PAGE = 23;
 
     private ShortcutType type;
     private int id;
-    private int slot;
-    private int page;
     private int lvl;
     private int subLvl;
     private int characterType; // 1 - player, 2 - pet
+    private int room;
 
     @Override
     public void readImpl() {
         final int typeId = readInt();
         type = ShortcutType.values()[(typeId < 1) || (typeId > 6) ? 0 : typeId];
-        final int slot = readInt();
-        this.slot = slot % 12;
-        page = slot / 12;
+        room = readInt();
         readByte(); // unk 0
         id = readInt();
         lvl = readShort();
@@ -33,23 +32,17 @@ public final class RequestShortCutReg extends ClientPacket {
 
     @Override
     public void runImpl() {
-        if ((client.getPlayer() == null) || (page > 23) || (page < 0)) {
+        if(room < 0 || ( room > Shortcut.MAX_ROOM  && room != Shortcut.AUTO_POTION_ROOM)) {
             return;
         }
 
-        if(page == AUTO_PLAY_PAGE) {
-            if(slot == 0 && type != ShortcutType.MACRO) {
-                client.sendPacket(ONLY_MACROS_CAN_BE_REGISTERED);
-                return;
-            }
+        var player = client.getPlayer();
 
-            if(slot == 1 && ( type != ShortcutType.ITEM || !client.getPlayer().getInventory().getItemByObjectId(id).isPotion())) {
-                return; // TODO restrict to HP auto potion only
-            }
+        Item item;
+        if(room == Shortcut.AUTO_POTION_ROOM && (type != ShortcutType.ITEM || isNull(item = player.getInventory().getItemByObjectId(id)) || !item.isAutoPotion())) {
+            return;
         }
 
-        final Shortcut sc = new Shortcut(slot, page, type, id, lvl, subLvl, characterType);
-        client.getPlayer().registerShortCut(sc);
-        client.sendPacket(new ShortCutRegister(sc));
+        player.registerShortCut(new Shortcut(room, type, id, lvl, subLvl, characterType));
     }
 }

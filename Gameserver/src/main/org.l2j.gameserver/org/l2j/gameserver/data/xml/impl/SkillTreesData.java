@@ -1,6 +1,7 @@
 package org.l2j.gameserver.data.xml.impl;
 
 import io.github.joealisson.primitive.*;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
 import org.l2j.gameserver.enums.Race;
 import org.l2j.gameserver.model.Clan;
 import org.l2j.gameserver.model.SkillLearn;
@@ -14,7 +15,7 @@ import org.l2j.gameserver.model.holders.PlayerSkillHolder;
 import org.l2j.gameserver.model.holders.SkillHolder;
 import org.l2j.gameserver.model.interfaces.ISkillsHolder;
 import org.l2j.gameserver.model.skills.CommonSkill;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.settings.ServerSettings;
 import org.l2j.gameserver.util.GameXmlReader;
 import org.slf4j.Logger;
@@ -50,9 +51,10 @@ import static org.l2j.commons.configuration.Configurator.getSettings;
  * For XML schema please refer to skillTrees.xsd in datapack in xsd folder and for parameters documentation refer to documentation.txt in skillTrees folder.<br>
  *
  * @author Zoey76
+ * @author JoeAlisson
  */
 public final class SkillTreesData extends GameXmlReader {
-    private static final Logger LOGGER = LoggerFactory.getLogger(SkillTreesData.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(SkillTreesData.class);
 
     // ClassId, Map of Skill Hash Code, SkillLearn
     private static final Map<ClassId, LongMap<SkillLearn>> classSkillTrees = new HashMap<>();
@@ -80,7 +82,6 @@ public final class SkillTreesData extends GameXmlReader {
     private long[] _allSkillsHashCodes; // Fishing, Collection, Transformations, Common Skills.
 
     private SkillTreesData() {
-        load();
     }
 
     @Override
@@ -150,7 +151,7 @@ public final class SkillTreesData extends GameXmlReader {
         final SkillLearn skillLearn = new SkillLearn(new StatsSet(parseAttributes(skillNode)));
 
         // test if skill exists
-        SkillData.getInstance().getSkill(skillLearn.getSkillId(), skillLearn.getSkillLevel());
+        SkillEngine.getInstance().getSkill(skillLearn.getSkillId(), skillLearn.getSkillLevel());
 
         for (Node b = skillNode.getFirstChild(); b != null; b = b.getNextSibling()) {
             var attrs = b.getAttributes();
@@ -169,7 +170,7 @@ public final class SkillTreesData extends GameXmlReader {
             }
         }
 
-        final long skillHashCode = SkillData.getSkillHashCode(skillLearn.getSkillId(), skillLearn.getSkillLevel());
+        final long skillHashCode = SkillEngine.skillHashCode(skillLearn.getSkillId(), skillLearn.getSkillLevel());
         switch (type) {
             case "classSkillTree" -> {
                 if (nonNull(classId)) {
@@ -224,7 +225,7 @@ public final class SkillTreesData extends GameXmlReader {
      * @return the complete Noble Skill Tree
      */
     public List<Skill> getNobleSkillTree() {
-        return nobleSkillTree.values().stream().map(entry -> SkillData.getInstance().getSkill(entry.getSkillId(), entry.getSkillLevel())).collect(Collectors.toList());
+        return nobleSkillTree.values().stream().map(entry -> SkillEngine.getInstance().getSkill(entry.getSkillId(), entry.getSkillLevel())).collect(Collectors.toList());
     }
 
     /**
@@ -233,7 +234,7 @@ public final class SkillTreesData extends GameXmlReader {
      * @return the complete Noble Skill Tree
      */
     public List<Skill> getNobleSkillAutoGetTree() {
-        return nobleSkillTree.values().stream().filter(SkillLearn::isAutoGet).map(entry -> SkillData.getInstance().getSkill(entry.getSkillId(), entry.getSkillLevel())).collect(Collectors.toList());
+        return nobleSkillTree.values().stream().filter(SkillLearn::isAutoGet).map(entry -> SkillEngine.getInstance().getSkill(entry.getSkillId(), entry.getSkillLevel())).collect(Collectors.toList());
     }
 
     /**
@@ -242,7 +243,7 @@ public final class SkillTreesData extends GameXmlReader {
      * @return the complete Hero Skill Tree
      */
     public List<Skill> getHeroSkillTree() {
-        return heroSkillTree.values().stream().map(entry -> SkillData.getInstance().getSkill(entry.getSkillId(), entry.getSkillLevel())).collect(Collectors.toList());
+        return heroSkillTree.values().stream().map(entry -> SkillEngine.getInstance().getSkill(entry.getSkillId(), entry.getSkillLevel())).collect(Collectors.toList());
     }
 
     /**
@@ -251,7 +252,7 @@ public final class SkillTreesData extends GameXmlReader {
      * @return the complete Game Master Skill Tree
      */
     public List<Skill> getGMSkillTree() {
-        return gameMasterSkillTree.values().stream().map(entry -> SkillData.getInstance().getSkill(entry.getSkillId(), entry.getSkillLevel())).collect(Collectors.toList());
+        return gameMasterSkillTree.values().stream().map(entry -> SkillEngine.getInstance().getSkill(entry.getSkillId(), entry.getSkillLevel())).collect(Collectors.toList());
     }
 
     /**
@@ -260,7 +261,7 @@ public final class SkillTreesData extends GameXmlReader {
      * @return the complete Game Master Aura Skill Tree
      */
     public List<Skill> getGMAuraSkillTree() {
-        return gameMasterAuraSkillTree.values().stream().map(entry -> SkillData.getInstance().getSkill(entry.getSkillId(), entry.getSkillLevel())).collect(Collectors.toList());
+        return gameMasterAuraSkillTree.values().stream().map(entry -> SkillEngine.getInstance().getSkill(entry.getSkillId(), entry.getSkillLevel())).collect(Collectors.toList());
     }
 
     public boolean hasAvailableSkills(Player player, ClassId classId) {
@@ -313,9 +314,6 @@ public final class SkillTreesData extends GameXmlReader {
             return result;
         }
 
-        final boolean isAwaken = player.isDualClassActive();
-
-
         for (var entry : skills.entrySet()) {
             final SkillLearn skill = entry.getValue();
 
@@ -323,13 +321,9 @@ public final class SkillTreesData extends GameXmlReader {
                 continue;
             }
 
-            if (isAwaken && !isCurrentClassSkillNoParent(classId, entry.getKey())) {
-                continue;
-            }
-
             if (player.getLevel() >= skill.getGetLevel()) {
-                if (skill.getSkillLevel() > SkillData.getInstance().getMaxLevel(skill.getSkillId())) {
-                    LOGGER.error("SkillTreesData found learnable skill {} with level higher than max skill level!", skill.getSkillId());
+                if (skill.getSkillLevel() > SkillEngine.getInstance().getMaxLevel(skill.getSkillId())) {
+                    LOGGER.warn("SkillTreesData found learnable skill {} with level higher than max skill level!", skill.getSkillId());
                     continue;
                 }
 
@@ -358,7 +352,7 @@ public final class SkillTreesData extends GameXmlReader {
             }
 
             for (SkillLearn skillLearn : learnable) {
-                final Skill skill = SkillData.getInstance().getSkill(skillLearn.getSkillId(), skillLearn.getSkillLevel());
+                final Skill skill = SkillEngine.getInstance().getSkill(skillLearn.getSkillId(), skillLearn.getSkillLevel());
                 // Cleanup skills that has to be removed
                 for (int skillId : skillLearn.getRemoveSkills()) {
                     // Mark skill as removed, so it doesn't gets added
@@ -535,13 +529,7 @@ public final class SkillTreesData extends GameXmlReader {
      * @return all the available Residential skills for a given {@code residenceId}
      */
     public List<SkillLearn> getAvailableResidentialSkills(int residenceId) {
-        final List<SkillLearn> result = new ArrayList<>();
-        for (SkillLearn skill : pledgeSkillTree.values()) {
-            if (skill.isResidencialSkill() && skill.getResidenceIds().contains(residenceId)) {
-                result.add(skill);
-            }
-        }
-        return result;
+        return pledgeSkillTree.values().stream().filter( s -> s.isResidencialSkill() && s.getResidenceIds().contains(residenceId)).collect(Collectors.toList());
     }
 
     /**
@@ -588,7 +576,7 @@ public final class SkillTreesData extends GameXmlReader {
      * @return the transform skill from the Transform Skill Tree for a given {@code id} and {@code lvl}
      */
     private SkillLearn getTransformSkill(int id, int lvl) {
-        return transformSkillTree.get(SkillData.getSkillHashCode(id, lvl));
+        return transformSkillTree.get(SkillEngine.skillHashCode(id, lvl));
     }
 
     /**
@@ -600,7 +588,7 @@ public final class SkillTreesData extends GameXmlReader {
      * @return the class skill from the Class Skill Trees for a given {@code classId}, {@code id} and {@code lvl}
      */
     public SkillLearn getClassSkill(int id, int lvl, ClassId classId) {
-        return getCompleteClassSkillTree(classId).get(SkillData.getSkillHashCode(id, lvl));
+        return getCompleteClassSkillTree(classId).get(SkillEngine.skillHashCode(id, lvl));
     }
 
     /**
@@ -611,7 +599,7 @@ public final class SkillTreesData extends GameXmlReader {
      * @return Fishing skill from the Fishing Skill Tree for a given {@code id} and {@code lvl}
      */
     private SkillLearn getFishingSkill(int id, int lvl) {
-        return fishingSkillTree.get(SkillData.getSkillHashCode(id, lvl));
+        return fishingSkillTree.get(SkillEngine.skillHashCode(id, lvl));
     }
 
     /**
@@ -622,7 +610,7 @@ public final class SkillTreesData extends GameXmlReader {
      * @return the pledge skill from the Pledge Skill Tree for a given {@code id} and {@code lvl}
      */
     public SkillLearn getPledgeSkill(int id, int lvl) {
-        return pledgeSkillTree.get(SkillData.getSkillHashCode(id, lvl));
+        return pledgeSkillTree.get(SkillEngine.skillHashCode(id, lvl));
     }
 
     /**
@@ -633,7 +621,7 @@ public final class SkillTreesData extends GameXmlReader {
      * @return the sub-pledge skill from the Sub-Pledge Skill Tree for a given {@code id} and {@code lvl}
      */
     public SkillLearn getSubPledgeSkill(int id, int lvl) {
-        return subPledgeSkillTree.get(SkillData.getSkillHashCode(id, lvl));
+        return subPledgeSkillTree.get(SkillEngine.skillHashCode(id, lvl));
     }
 
     /**
@@ -683,8 +671,8 @@ public final class SkillTreesData extends GameXmlReader {
 
     public void cleanSkillUponAwakening(Player player) {
         for (Skill skill : player.getAllSkills()) {
-            final int maxLvl = SkillData.getInstance().getMaxLevel(skill.getId());
-            final long hashCode = SkillData.getSkillHashCode(skill.getId(), maxLvl);
+            final int maxLvl = SkillEngine.getInstance().getMaxLevel(skill.getId());
+            final long hashCode = SkillEngine.skillHashCode(skill.getId(), maxLvl);
 
             if (!isCurrentClassSkillNoParent(player.getClassId(), hashCode) && !isRemoveSkill(player.getClassId(), skill.getId())) {
                 player.removeSkill(skill, true, true);
@@ -701,7 +689,7 @@ public final class SkillTreesData extends GameXmlReader {
      * @return {@code true} if the skill is present in the Hero Skill Tree, {@code false} otherwise
      */
     public boolean isHeroSkill(int skillId, int skillLevel) {
-        return heroSkillTree.containsKey(SkillData.getSkillHashCode(skillId, skillLevel));
+        return heroSkillTree.containsKey(SkillEngine.skillHashCode(skillId, skillLevel));
     }
 
     /**
@@ -712,7 +700,7 @@ public final class SkillTreesData extends GameXmlReader {
      * @return {@code true} if the skill is present in the Game Master Skill Trees, {@code false} otherwise
      */
     public boolean isGMSkill(int skillId, int skillLevel) {
-        final long hashCode = SkillData.getSkillHashCode(skillId, skillLevel);
+        final long hashCode = SkillEngine.skillHashCode(skillId, skillLevel);
         return gameMasterSkillTree.containsKey(hashCode) || gameMasterAuraSkillTree.containsKey(hashCode);
     }
 
@@ -724,7 +712,7 @@ public final class SkillTreesData extends GameXmlReader {
      * @return {@code true} if the skill is present in the Pledge or Subpledge Skill Trees, {@code false} otherwise
      */
     public boolean isClanSkill(int skillId, int skillLevel) {
-        final long hashCode = SkillData.getSkillHashCode(skillId, skillLevel);
+        final long hashCode = SkillEngine.skillHashCode(skillId, skillLevel);
         return pledgeSkillTree.containsKey(hashCode) || subPledgeSkillTree.containsKey(hashCode);
     }
 
@@ -744,7 +732,7 @@ public final class SkillTreesData extends GameXmlReader {
      */
     public void addSkills(Player gmchar, boolean auraSkills) {
         final Collection<SkillLearn> skills = auraSkills ? gameMasterAuraSkillTree.values() : gameMasterSkillTree.values();
-        final SkillData st = SkillData.getInstance();
+        final SkillEngine st = SkillEngine.getInstance();
         for (SkillLearn sl : skills) {
             gmchar.addSkill(st.getSkill(sl.getSkillId(), sl.getSkillLevel()), false); // Don't Save GM skills to database
         }
@@ -766,7 +754,7 @@ public final class SkillTreesData extends GameXmlReader {
             array = tempMap.keySet().toArray();
             tempMap.clear();
             Arrays.sort(array);
-            _skillsByClassIdHashCodes.put(cls.ordinal(), array);
+            _skillsByClassIdHashCodes.put(cls.getId(), array);
         }
 
         // Race specific skills from Fishing and Transformation skill trees.
@@ -775,13 +763,13 @@ public final class SkillTreesData extends GameXmlReader {
         for (Race r : Race.values()) {
             for (SkillLearn s : fishingSkillTree.values()) {
                 if (s.getRaces().contains(r)) {
-                    list.add(SkillData.getSkillHashCode(s.getSkillId(), s.getSkillLevel()));
+                    list.add(SkillEngine.skillHashCode(s.getSkillId(), s.getSkillLevel()));
                 }
             }
 
             for (SkillLearn s : transformSkillTree.values()) {
                 if (s.getRaces().contains(r)) {
-                    list.add(SkillData.getSkillHashCode(s.getSkillId(), s.getSkillLevel()));
+                    list.add(SkillEngine.skillHashCode(s.getSkillId(), s.getSkillLevel()));
                 }
             }
 
@@ -798,19 +786,19 @@ public final class SkillTreesData extends GameXmlReader {
         // Skills available for all classes and races
         for (SkillLearn s : commonSkillTree.values()) {
             if (s.getRaces().isEmpty()) {
-                list.add(SkillData.getSkillHashCode(s.getSkillId(), s.getSkillLevel()));
+                list.add(SkillEngine.skillHashCode(s.getSkillId(), s.getSkillLevel()));
             }
         }
 
         for (SkillLearn s : fishingSkillTree.values()) {
             if (s.getRaces().isEmpty()) {
-                list.add(SkillData.getSkillHashCode(s.getSkillId(), s.getSkillLevel()));
+                list.add(SkillEngine.skillHashCode(s.getSkillId(), s.getSkillLevel()));
             }
         }
 
         for (SkillLearn s : transformSkillTree.values()) {
             if (s.getRaces().isEmpty()) {
-                list.add(SkillData.getSkillHashCode(s.getSkillId(), s.getSkillLevel()));
+                list.add(SkillEngine.skillHashCode(s.getSkillId(), s.getSkillLevel()));
             }
         }
 
@@ -844,10 +832,10 @@ public final class SkillTreesData extends GameXmlReader {
             return true;
         }
 
-        final int maxLvl = SkillData.getInstance().getMaxLevel(skill.getId());
-        final long hashCode = SkillData.getSkillHashCode(skill.getId(), Math.min(skill.getLevel(), maxLvl));
+        final int maxLvl = SkillEngine.getInstance().getMaxLevel(skill.getId());
+        final long hashCode = SkillEngine.skillHashCode(skill.getId(), Math.min(skill.getLevel(), maxLvl));
 
-        if (Arrays.binarySearch(_skillsByClassIdHashCodes.get(player.getClassId().ordinal()), hashCode) >= 0) {
+        if (Arrays.binarySearch(_skillsByClassIdHashCodes.get(player.getClassId().getId()), hashCode) >= 0) {
             return true;
         }
 
@@ -874,6 +862,10 @@ public final class SkillTreesData extends GameXmlReader {
         LOGGER.info("Loaded {} Game Master Skills.", gameMasterSkillTree.size());
         LOGGER.info("Loaded {} Game Master Aura Skills.", gameMasterAuraSkillTree.size());
         LOGGER.info("Loaded {} Common Skills to all classes.", commonSkillTree.size());
+    }
+
+    public static void init() {
+        getInstance().load();
     }
 
     public static SkillTreesData getInstance() {

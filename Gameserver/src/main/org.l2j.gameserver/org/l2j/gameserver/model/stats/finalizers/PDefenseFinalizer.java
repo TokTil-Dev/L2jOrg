@@ -1,54 +1,32 @@
-/*
- * This file is part of the L2J Mobius project.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
 package org.l2j.gameserver.model.stats.finalizers;
 
 import org.l2j.gameserver.Config;
+import org.l2j.gameserver.enums.InventorySlot;
 import org.l2j.gameserver.model.actor.Creature;
 import org.l2j.gameserver.model.actor.instance.Pet;
 import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.model.itemcontainer.Inventory;
-import org.l2j.gameserver.model.items.ItemTemplate;
+import org.l2j.gameserver.model.items.BodyPart;
 import org.l2j.gameserver.model.items.instance.Item;
 import org.l2j.gameserver.model.stats.IStatsFunction;
-import org.l2j.gameserver.model.stats.Stats;
+import org.l2j.gameserver.model.stats.Stat;
 
 import java.util.Optional;
 
+import static org.l2j.gameserver.enums.InventorySlot.CHEST;
+import static org.l2j.gameserver.enums.InventorySlot.LEGS;
 import static org.l2j.gameserver.util.GameUtils.isPet;
 import static org.l2j.gameserver.util.GameUtils.isPlayer;
 
 /**
  * @author UnAfraid
+ * @author JoeAlisson
  */
 public class PDefenseFinalizer implements IStatsFunction {
-    private static final int[] SLOTS =
-            {
-                    Inventory.PAPERDOLL_CHEST,
-                    Inventory.PAPERDOLL_LEGS,
-                    Inventory.PAPERDOLL_HEAD,
-                    Inventory.PAPERDOLL_FEET,
-                    Inventory.PAPERDOLL_GLOVES,
-                    Inventory.PAPERDOLL_UNDER,
-                    Inventory.PAPERDOLL_CLOAK,
-                    Inventory.PAPERDOLL_HAIR
-            };
+
 
     @Override
-    public double calc(Creature creature, Optional<Double> base, Stats stat) {
+    public double calc(Creature creature, Optional<Double> base, Stat stat) {
         throwIfPresent(base);
         double baseValue = creature.getTemplate().getBaseValue(stat, 0);
         if (isPet(creature)) {
@@ -60,14 +38,14 @@ public class PDefenseFinalizer implements IStatsFunction {
         final Inventory inv = creature.getInventory();
         if (inv != null) {
             for (Item item : inv.getPaperdollItems()) {
-                baseValue += item.getItem().getStats(stat, 0);
+                baseValue += item.getTemplate().getStats(stat, 0);
             }
 
             if (isPlayer(creature)) {
                 final Player player = creature.getActingPlayer();
-                for (int slot : SLOTS) {
+                for (var slot : InventorySlot.armors()) {
                     if (!inv.isPaperdollSlotEmpty(slot) || //
-                            ((slot == Inventory.PAPERDOLL_LEGS) && !inv.isPaperdollSlotEmpty(Inventory.PAPERDOLL_CHEST) && (inv.getPaperdollItem(Inventory.PAPERDOLL_CHEST).getItem().getBodyPart() == ItemTemplate.SLOT_FULL_ARMOR))) {
+                            ((slot == LEGS) && !inv.isPaperdollSlotEmpty(CHEST) && (inv.getPaperdollItem(CHEST).getTemplate().getBodyPart() == BodyPart.FULL_ARMOR))) {
                         final int defaultStatValue = player.getTemplate().getBaseDefBySlot(slot);
                         baseValue -= creature.getTransformation().map(transform -> transform.getBaseDefBySlot(player, slot)).orElse(defaultStatValue);
                     }
@@ -84,9 +62,9 @@ public class PDefenseFinalizer implements IStatsFunction {
         return defaultValue(creature, stat, baseValue);
     }
 
-    private double defaultValue(Creature creature, Stats stat, double baseValue) {
-        final double mul = Math.max(creature.getStat().getMul(stat), 0.5);
-        final double add = creature.getStat().getAdd(stat);
-        return (baseValue * mul) + add + creature.getStat().getMoveTypeValue(stat, creature.getMoveType());
+    private double defaultValue(Creature creature, Stat stat, double baseValue) {
+        final double mul = Math.max(creature.getStats().getMul(stat), 0.5);
+        final double add = creature.getStats().getAdd(stat);
+        return (baseValue * mul) + add + creature.getStats().getMoveTypeValue(stat, creature.getMoveType());
     }
 }

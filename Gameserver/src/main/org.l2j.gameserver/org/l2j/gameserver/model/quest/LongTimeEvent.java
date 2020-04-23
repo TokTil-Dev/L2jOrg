@@ -5,7 +5,7 @@ import org.l2j.commons.threading.ThreadPool;
 import org.l2j.gameserver.data.database.announce.manager.AnnouncementsManager;
 import org.l2j.gameserver.data.xml.impl.NpcData;
 import org.l2j.gameserver.datatables.EventDroplist;
-import org.l2j.gameserver.datatables.ItemTable;
+import org.l2j.gameserver.engine.item.ItemEngine;
 import org.l2j.gameserver.instancemanager.EventShrineManager;
 import org.l2j.gameserver.world.World;
 import org.l2j.gameserver.model.Location;
@@ -141,7 +141,7 @@ public class LongTimeEvent extends Quest {
                                             finalChance = Integer.parseInt(chance.substring(0, chance.length() - 1)) * 10000;
                                         }
 
-                                        if (ItemTable.getInstance().getTemplate(itemId) == null) {
+                                        if (ItemEngine.getInstance().getTemplate(itemId) == null) {
                                             LOGGER.warn(getScriptName() + " event: " + itemId + " is wrong item id, item was not added in droplist");
                                             continue;
                                         }
@@ -211,7 +211,7 @@ public class LongTimeEvent extends Quest {
                             if (d.getNodeName().equalsIgnoreCase("item")) {
                                 try {
                                     final int itemId = Integer.parseInt(d.getAttributes().getNamedItem("id").getNodeValue());
-                                    if (ItemTable.getInstance().getTemplate(itemId) == null) {
+                                    if (ItemEngine.getInstance().getTemplate(itemId) == null) {
                                         LOGGER.warn(getScriptName() + " event: Item " + itemId + " does not exist.");
                                         continue;
                                     }
@@ -328,7 +328,7 @@ public class LongTimeEvent extends Quest {
             if (_enableShrines) {
                 EventShrineManager.getInstance().setEnabled(false);
             }
-            // Destroy items that must exist only on event period.
+            // Destroy item that must exist only on event period.
             destoyItemsOnEnd();
             // Send message on end
             Broadcast.toAllOnlinePlayers(_endMsg);

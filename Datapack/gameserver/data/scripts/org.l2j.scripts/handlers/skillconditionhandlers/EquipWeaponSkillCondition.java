@@ -1,54 +1,50 @@
-/*
- * This file is part of the L2J Mobius project.
- * 
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
 package handlers.skillconditionhandlers;
 
+import java.util.Arrays;
 import java.util.List;
 
+import org.l2j.commons.util.Util;
+import org.l2j.gameserver.engine.skill.api.SkillConditionFactory;
 import org.l2j.gameserver.model.WorldObject;
 import org.l2j.gameserver.model.StatsSet;
 import org.l2j.gameserver.model.actor.Creature;
 import org.l2j.gameserver.model.items.ItemTemplate;
 import org.l2j.gameserver.model.items.type.WeaponType;
-import org.l2j.gameserver.model.skills.ISkillCondition;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.SkillCondition;
+import org.l2j.gameserver.engine.skill.api.Skill;
+import org.w3c.dom.Node;
+
+import static java.util.Objects.nonNull;
 
 /**
  * @author Sdw
+ * @author JoeAlisson
  */
-public class EquipWeaponSkillCondition implements ISkillCondition
-{
-	private int _weaponTypesMask = 0;
-	
-	public EquipWeaponSkillCondition(StatsSet params)
-	{
-		final List<WeaponType> weaponTypes = params.getEnumList("weaponType", WeaponType.class);
-		if (weaponTypes != null)
-		{
-			for (WeaponType weaponType : weaponTypes)
-			{
-				_weaponTypesMask |= weaponType.mask();
-			}
-		}
+public class EquipWeaponSkillCondition implements SkillCondition {
+	public int mask;
+
+	private EquipWeaponSkillCondition(int mask) {
+		this.mask = mask;
 	}
-	
+
 	@Override
-	public boolean canUse(Creature caster, Skill skill, WorldObject target)
-	{
+	public boolean canUse(Creature caster, Skill skill, WorldObject target) {
 		final ItemTemplate weapon = caster.getActiveWeaponItem();
-		return (weapon != null) && ((weapon.getItemMask() & _weaponTypesMask) != 0);
+		return nonNull(weapon) && (weapon.getItemMask() & mask) != 0;
+	}
+
+	public static final class Factory extends SkillConditionFactory {
+
+		@Override
+		public SkillCondition create(Node xmlNode) {
+			int mask = Arrays.stream(xmlNode.getFirstChild().getTextContent().split(Util.SPACE))
+					.mapToInt(s -> WeaponType.valueOf(s).mask()).reduce(0, (a, b) -> a | b);
+			return new EquipWeaponSkillCondition(mask);
+		}
+
+		@Override
+		public String conditionName() {
+			return "weapon";
+		}
 	}
 }

@@ -1,22 +1,22 @@
 package org.l2j.gameserver.model.items.instance;
 
 import org.l2j.commons.database.DatabaseFactory;
-import org.l2j.gameserver.Config;
 import org.l2j.commons.threading.ThreadPool;
+import org.l2j.gameserver.Config;
 import org.l2j.gameserver.data.xml.impl.EnchantItemOptionsData;
 import org.l2j.gameserver.data.xml.impl.EnsoulData;
-import org.l2j.gameserver.data.xml.impl.OptionData;
-import org.l2j.gameserver.datatables.ItemTable;
-import org.l2j.gameserver.enums.AttributeType;
-import org.l2j.gameserver.enums.InstanceType;
-import org.l2j.gameserver.enums.ItemLocation;
-import org.l2j.gameserver.enums.ItemSkillType;
+import org.l2j.gameserver.data.xml.impl.AugmentationEngine;
 import org.l2j.gameserver.engine.geo.GeoEngine;
+import org.l2j.gameserver.engine.item.ItemEngine;
+import org.l2j.gameserver.enums.*;
 import org.l2j.gameserver.idfactory.IdFactory;
 import org.l2j.gameserver.instancemanager.CastleManager;
 import org.l2j.gameserver.instancemanager.ItemsOnGroundManager;
 import org.l2j.gameserver.instancemanager.SiegeGuardManager;
-import org.l2j.gameserver.model.*;
+import org.l2j.gameserver.model.DropProtection;
+import org.l2j.gameserver.model.Location;
+import org.l2j.gameserver.model.VariationInstance;
+import org.l2j.gameserver.model.WorldObject;
 import org.l2j.gameserver.model.actor.Creature;
 import org.l2j.gameserver.model.actor.Summon;
 import org.l2j.gameserver.model.actor.instance.Player;
@@ -29,15 +29,18 @@ import org.l2j.gameserver.model.events.impl.character.player.OnPlayerItemDrop;
 import org.l2j.gameserver.model.events.impl.character.player.OnPlayerItemPickup;
 import org.l2j.gameserver.model.events.impl.item.OnItemBypassEvent;
 import org.l2j.gameserver.model.events.impl.item.OnItemTalk;
+import org.l2j.gameserver.model.holders.ItemSkillHolder;
 import org.l2j.gameserver.model.instancezone.Instance;
 import org.l2j.gameserver.model.itemcontainer.Inventory;
 import org.l2j.gameserver.model.items.*;
 import org.l2j.gameserver.model.items.enchant.attribute.AttributeHolder;
+import org.l2j.gameserver.model.items.type.ActionType;
 import org.l2j.gameserver.model.items.type.EtcItemType;
 import org.l2j.gameserver.model.items.type.ItemType;
 import org.l2j.gameserver.model.options.EnchantOptions;
 import org.l2j.gameserver.model.options.Options;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
+import org.l2j.gameserver.model.stats.Stat;
 import org.l2j.gameserver.network.SystemMessageId;
 import org.l2j.gameserver.network.serverpackets.*;
 import org.l2j.gameserver.settings.GeneralSettings;
@@ -56,6 +59,7 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 
 import static org.l2j.commons.configuration.Configurator.getSettings;
 
@@ -66,7 +70,7 @@ import static org.l2j.commons.configuration.Configurator.getSettings;
  * @version $Revision: 1.4.2.1.2.11 $ $Date: 2005/03/31 16:07:50 $
  */
 public final class Item extends WorldObject {
-    public static final int UNCHANGED = 0;
+
     public static final int ADDED = 1;
     public static final int REMOVED = 3;
     public static final int MODIFIED = 2;
@@ -74,16 +78,11 @@ public final class Item extends WorldObject {
     public static final int[] DEFAULT_ENCHANT_OPTIONS = new int[]{0, 0, 0};
     private static final Logger LOGGER = LoggerFactory.getLogger(Item.class);
     private static final Logger LOG_ITEMS = LoggerFactory.getLogger("item");
-    private static final int MANA_CONSUMPTION_RATE = 60000;
     /**
      * ID of the item
      */
-    private final int _itemId;
-
-    /**
-     * Object ItemTemplate associated to the item
-     */
-    private final ItemTemplate _item;
+    private final int itemId;
+    private final ItemTemplate template;
     private final ReentrantLock _dbLock = new ReentrantLock();
     private final DropProtection _dropProtection = new DropProtection();
     private final List<Options> _enchantOptions = new ArrayList<>();
@@ -116,7 +115,7 @@ public final class Item extends WorldObject {
     /**
      * Location of the item : Inventory, PaperDoll, WareHouse
      */
-    private ItemLocation _loc;
+    private ItemLocation loc;
     /**
      * Slot where item is stored : Paperdoll slot, inventory order ...
      */
@@ -133,11 +132,7 @@ public final class Item extends WorldObject {
      * Augmented Item
      */
     private VariationInstance _augmentation = null;
-    /**
-     * Shadow item
-     */
-    private int _mana = -1;
-    private boolean _consumingMana = false;
+
     //@formatter:on
     /**
      * Custom item types (used loto, race tickets)
@@ -163,18 +158,17 @@ public final class Item extends WorldObject {
     public Item(int objectId, int itemId) {
         super(objectId);
         setInstanceType(InstanceType.L2ItemInstance);
-        _itemId = itemId;
-        _item = ItemTable.getInstance().getTemplate(itemId);
-        if ((_itemId == 0) || (_item == null)) {
+        this.itemId = itemId;
+        template = ItemEngine.getInstance().getTemplate(itemId);
+        if ((this.itemId == 0) || (template == null)) {
             throw new IllegalArgumentException();
         }
-        super.setName(_item.getName());
-        _loc = ItemLocation.VOID;
+        super.setName(template.getName());
+        loc = ItemLocation.VOID;
         _type1 = 0;
         _type2 = 0;
         _dropTime = 0;
-        _mana = _item.getDuration();
-        _time = _item.getTime() == -1 ? -1 : System.currentTimeMillis() + (_item.getTime() * 60 * 1000);
+        _time = template.getTime() == -1 ? -1 : System.currentTimeMillis() + (template.getTime() * 60 * 1000);
         scheduleLifeTimeTask();
     }
 
@@ -182,20 +176,19 @@ public final class Item extends WorldObject {
      * Constructor of the Item from the objetId and the description of the item given by the ItemTemplate.
      *
      * @param objectId : int designating the ID of the object in the world
-     * @param item     : ItemTemplate containing informations of the item
+     * @param template     : ItemTemplate containing informations of the item
      */
-    public Item(int objectId, ItemTemplate item) {
+    public Item(int objectId, ItemTemplate template) {
         super(objectId);
         setInstanceType(InstanceType.L2ItemInstance);
-        _itemId = item.getId();
-        _item = item;
-        if (_itemId == 0) {
+        itemId = template.getId();
+        this.template = template;
+        if (itemId == 0) {
             throw new IllegalArgumentException();
         }
-        super.setName(_item.getName());
-        _loc = ItemLocation.VOID;
-        _mana = _item.getDuration();
-        _time = _item.getTime() == -1 ? -1 : System.currentTimeMillis() + (_item.getTime() * 60 * 1000);
+        super.setName(this.template.getName());
+        loc = ItemLocation.VOID;
+        _time = this.template.getTime() == -1 ? -1 : System.currentTimeMillis() + (this.template.getTime() * 60 * 1000);
         scheduleLifeTimeTask();
     }
 
@@ -204,15 +197,14 @@ public final class Item extends WorldObject {
      * @throws SQLException
      */
     public Item(ResultSet rs) throws SQLException {
-        this(rs.getInt("object_id"), ItemTable.getInstance().getTemplate(rs.getInt("item_id")));
+        this(rs.getInt("object_id"), ItemEngine.getInstance().getTemplate(rs.getInt("item_id")));
         _count = rs.getLong("count");
         _ownerId = rs.getInt("owner_id");
-        _loc = ItemLocation.valueOf(rs.getString("loc"));
+        loc = ItemLocation.valueOf(rs.getString("loc"));
         _locData = rs.getInt("loc_data");
         _enchantLevel = rs.getInt("enchant_level");
         _type1 = rs.getInt("custom_type1");
         _type2 = rs.getInt("custom_type2");
-        _mana = rs.getInt("mana_left");
         _time = rs.getLong("time");
         _existsInDb = true;
         _storedInDb = true;
@@ -262,7 +254,7 @@ public final class Item extends WorldObject {
 
         // if this item is a mercenary ticket, remove the spawns!
         final Castle castle = CastleManager.getInstance().getCastle(this);
-        if ((castle != null) && (SiegeGuardManager.getInstance().getSiegeGuardByItem(castle.getResidenceId(), getId()) != null)) {
+        if ((castle != null) && (SiegeGuardManager.getInstance().getSiegeGuardByItem(castle.getId(), getId()) != null)) {
             SiegeGuardManager.getInstance().removeTicket(this);
             ItemsOnGroundManager.getInstance().removeObject(this);
         }
@@ -273,7 +265,7 @@ public final class Item extends WorldObject {
 
         if (GameUtils.isPlayer(character)){
             // Notify to scripts
-            EventDispatcher.getInstance().notifyEventAsync(new OnPlayerItemPickup(character.getActingPlayer(), this), getItem());
+            EventDispatcher.getInstance().notifyEventAsync(new OnPlayerItemPickup(character.getActingPlayer(), this), getTemplate());
         }
     }
 
@@ -288,20 +280,21 @@ public final class Item extends WorldObject {
     public void setOwnerId(String process, int owner_id, Player creator, Object reference) {
         setOwnerId(owner_id);
 
-        if (Config.LOG_ITEMS) {
-            if (!Config.LOG_ITEMS_SMALL_LOG || (Config.LOG_ITEMS_SMALL_LOG && (_item.isEquipable() || (_item.getId() == CommonItem.ADENA)))) {
+        var generalSettings = getSettings(GeneralSettings.class);
+        if (generalSettings.logItems()) {
+            if (!generalSettings.smallLogItems() || template.isEquipable() || template.getId() == CommonItem.ADENA) {
                 if (_enchantLevel > 0) {
                     LOG_ITEMS.info("SETOWNER:" + String.valueOf(process) // in case of null
                             + ", item " + getObjectId() //
                             + ":+" + _enchantLevel //
-                            + " " + _item.getName() //
+                            + " " + template.getName() //
                             + "(" + _count + "), " //
                             + String.valueOf(creator) + ", " // in case of null
                             + String.valueOf(reference)); // in case of null
                 } else {
                     LOG_ITEMS.info("SETOWNER:" + String.valueOf(process) // in case of null
                             + ", item " + getObjectId() //
-                            + ":" + _item.getName() //
+                            + ":" + template.getName() //
                             + "(" + _count + "), " //
                             + String.valueOf(creator) + ", " // in case of null
                             + String.valueOf(reference)); // in case of null
@@ -318,7 +311,7 @@ public final class Item extends WorldObject {
             }
             final String targetName = (creator.getTarget() != null ? creator.getTarget().getName() : "no-target");
             if (getSettings(GeneralSettings.class).auditGM()) {
-                GMAudit.auditGMAction(creator.getName() + " [" + creator.getObjectId() + "]", process + "(id: " + _itemId + " name: " + getName() + ")", targetName, "WorldObject referencing this action is: " + referenceName);
+                GMAudit.auditGMAction(creator.getName() + " [" + creator.getObjectId() + "]", process + "(id: " + itemId + " name: " + getName() + ")", targetName, "WorldObject referencing this action is: " + referenceName);
             }
         }
     }
@@ -362,14 +355,14 @@ public final class Item extends WorldObject {
      * @param loc_data : int designating the slot where the item is stored or the village for freights
      */
     public void setItemLocation(ItemLocation loc, int loc_data) {
-        if ((loc == _loc) && (loc_data == _locData)) {
+        if ((loc == this.loc) && (loc_data == _locData)) {
             return;
         }
 
         // Remove any inventory skills from the old owner.
         removeSkillsFromOwner();
 
-        _loc = loc;
+        this.loc = loc;
         _locData = loc_data;
         _storedInDb = false;
 
@@ -379,7 +372,7 @@ public final class Item extends WorldObject {
     }
 
     public ItemLocation getItemLocation() {
-        return _loc;
+        return loc;
     }
 
     /**
@@ -428,7 +421,7 @@ public final class Item extends WorldObject {
             return;
         }
         final long old = _count;
-        final long max = _itemId == CommonItem.ADENA ? Inventory.MAX_ADENA : Integer.MAX_VALUE;
+        final long max = itemId == CommonItem.ADENA ? Inventory.MAX_ADENA : Integer.MAX_VALUE;
 
         if ((count > 0) && (_count > (max - count))) {
             setCount(max);
@@ -442,13 +435,14 @@ public final class Item extends WorldObject {
 
         _storedInDb = false;
 
-        if (Config.LOG_ITEMS && (process != null)) {
-            if (!Config.LOG_ITEMS_SMALL_LOG || _item.isEquipable() || _item.getId() == CommonItem.ADENA) {
+        var generalSettings = getSettings(GeneralSettings.class);
+        if (generalSettings.logItems() && (process != null)) {
+            if (!generalSettings.smallLogItems() || template.isEquipable() || template.getId() == CommonItem.ADENA) {
                 if (_enchantLevel > 0) {
                     LOG_ITEMS.info("CHANGE:" + String.valueOf(process) // in case of null
                             + ", item " + getObjectId() //
                             + ":+" + _enchantLevel //
-                            + " " + _item.getName() //
+                            + " " + template.getName() //
                             + "(" + _count + "), PrevCount(" //
                             + String.valueOf(old) + "), " // in case of null
                             + String.valueOf(creator) + ", " // in case of null
@@ -456,7 +450,7 @@ public final class Item extends WorldObject {
                 } else {
                     LOG_ITEMS.info("CHANGE:" + String.valueOf(process) // in case of null
                             + ", item " + getObjectId() //
-                            + ":" + _item.getName() //
+                            + ":" + template.getName() //
                             + "(" + _count + "), PrevCount(" //
                             + String.valueOf(old) + "), " // in case of null
                             + String.valueOf(creator) + ", " // in case of null
@@ -474,7 +468,7 @@ public final class Item extends WorldObject {
             }
             final String targetName = (creator.getTarget() != null ? creator.getTarget().getName() : "no-target");
             if (getSettings(GeneralSettings.class).auditGM()) {
-                GMAudit.auditGMAction(creator.getName() + " [" + creator.getObjectId() + "]", process + "(id: " + _itemId + " objId: " + getObjectId() + " name: " + getName() + " count: " + count + ")", targetName, "WorldObject referencing this action is: " + referenceName);
+                GMAudit.auditGMAction(creator.getName() + " [" + creator.getObjectId() + "]", process + "(id: " + itemId + " objId: " + getObjectId() + " name: " + getName() + " count: " + count + ")", targetName, "WorldObject referencing this action is: " + referenceName);
             }
         }
     }
@@ -489,11 +483,11 @@ public final class Item extends WorldObject {
      *
      * @return boolean
      */
-    public int isEnchantable() {
-        if ((_loc == ItemLocation.INVENTORY) || (_loc == ItemLocation.PAPERDOLL)) {
-            return _item.isEnchantable();
+    public boolean isEnchantable() {
+        if ((loc == ItemLocation.INVENTORY) || (loc == ItemLocation.PAPERDOLL)) {
+            return template.isEnchantable();
         }
-        return 0;
+        return false;
     }
 
     /**
@@ -502,7 +496,7 @@ public final class Item extends WorldObject {
      * @return boolean
      */
     public boolean isEquipable() {
-        return _item.getBodyPart() != ItemTemplate.SLOT_NONE;
+        return template instanceof EquipableItem;
     }
 
     /**
@@ -511,7 +505,7 @@ public final class Item extends WorldObject {
      * @return boolean
      */
     public boolean isEquipped() {
-        return (_loc == ItemLocation.PAPERDOLL) || (_loc == ItemLocation.PET_EQUIP);
+        return (loc == ItemLocation.PAPERDOLL) || (loc == ItemLocation.PET_EQUIP);
     }
 
     /**
@@ -527,9 +521,10 @@ public final class Item extends WorldObject {
      * Returns the characteristics of the item
      *
      * @return ItemTemplate
+     * @Deprecated
      */
-    public ItemTemplate getItem() {
-        return _item;
+    public ItemTemplate getTemplate() {
+        return template;
     }
 
     public int getCustomType1() {
@@ -560,7 +555,7 @@ public final class Item extends WorldObject {
      * @return the type of item.
      */
     public ItemType getItemType() {
-        return _item.getItemType();
+        return template.getItemType();
     }
 
     /**
@@ -570,43 +565,43 @@ public final class Item extends WorldObject {
      */
     @Override
     public int getId() {
-        return _itemId;
+        return itemId;
     }
 
     /**
      * @return the display Id of the item.
      */
     public int getDisplayId() {
-        return _item.getDisplayId();
+        return template.getDisplayId();
     }
 
     /**
      * @return {@code true} if item is an EtcItem, {@code false} otherwise.
      */
     public boolean isEtcItem() {
-        return (_item instanceof EtcItem);
+        return (template instanceof EtcItem);
     }
 
     /**
      * @return {@code true} if item is a Weapon/Shield, {@code false} otherwise.
      */
     public boolean isWeapon() {
-        return (_item instanceof Weapon);
+        return (template instanceof Weapon);
     }
 
     /**
      * @return {@code true} if item is an Armor, {@code false} otherwise.
      */
     public boolean isArmor() {
-        return (_item instanceof Armor);
+        return (template instanceof Armor);
     }
 
     /**
      * @return the characteristics of the EtcItem, {@code false} otherwise.
      */
     public EtcItem getEtcItem() {
-        if (_item instanceof EtcItem) {
-            return (EtcItem) _item;
+        if (template instanceof EtcItem) {
+            return (EtcItem) template;
         }
         return null;
     }
@@ -615,18 +610,8 @@ public final class Item extends WorldObject {
      * @return the characteristics of the Weapon.
      */
     public Weapon getWeaponItem() {
-        if (_item instanceof Weapon) {
-            return (Weapon) _item;
-        }
-        return null;
-    }
-
-    /**
-     * @return the characteristics of the Armor.
-     */
-    public Armor getArmorItem() {
-        if (_item instanceof Armor) {
-            return (Armor) _item;
+        if (template instanceof Weapon) {
+            return (Weapon) template;
         }
         return null;
     }
@@ -635,35 +620,35 @@ public final class Item extends WorldObject {
      * @return the quantity of crystals for crystallization.
      */
     public final int getCrystalCount() {
-        return _item.getCrystalCount(_enchantLevel);
+        return template.getCrystalCount(_enchantLevel);
     }
 
     /**
      * @return the reference price of the item.
      */
     public long getReferencePrice() {
-        return _item.getReferencePrice();
+        return template.getReferencePrice();
     }
 
     /**
      * @return the name of the item.
      */
     public String getItemName() {
-        return _item.getName();
+        return template.getName();
     }
 
     /**
      * @return the reuse delay of this item.
      */
     public int getReuseDelay() {
-        return _item.getReuseDelay();
+        return template.getReuseDelay();
     }
 
     /**
      * @return the shared reuse item group.
      */
     public int getSharedReuseGroup() {
-        return _item.getSharedReuseGroup();
+        return template.getSharedReuseGroup();
     }
 
     /**
@@ -688,7 +673,7 @@ public final class Item extends WorldObject {
      * @return boolean
      */
     public boolean isStackable() {
-        return _item.isStackable();
+        return template.isStackable();
     }
 
     /**
@@ -697,7 +682,7 @@ public final class Item extends WorldObject {
      * @return boolean
      */
     public boolean isDropable() {
-        return !isAugmented() && _item.isDropable();
+        return !isAugmented() && template.isDropable();
     }
 
     /**
@@ -706,7 +691,7 @@ public final class Item extends WorldObject {
      * @return boolean
      */
     public boolean isDestroyable() {
-        return _item.isDestroyable();
+        return template.isDestroyable();
     }
 
     /**
@@ -715,7 +700,7 @@ public final class Item extends WorldObject {
      * @return boolean
      */
     public boolean isTradeable() {
-        return !isAugmented() && _item.isTradeable();
+        return !isAugmented() && template.isTradeable();
     }
 
     /**
@@ -724,7 +709,7 @@ public final class Item extends WorldObject {
      * @return boolean
      */
     public boolean isSellable() {
-        return !isAugmented() && _item.isSellable();
+        return !isAugmented() && template.isSellable();
     }
 
     /**
@@ -732,38 +717,36 @@ public final class Item extends WorldObject {
      * @return if item can be deposited in warehouse or freight
      */
     public boolean isDepositable(boolean isPrivateWareHouse) {
-        // equipped, hero and quest items
-        if (isEquipped() || !_item.isDepositable()) {
+        // equipped, hero and quest item
+        if (isEquipped() || !template.isDepositable()) {
             return false;
         }
         if (!isPrivateWareHouse) {
             // augmented not tradeable
-            if (!isTradeable() || isShadowItem()) {
-                return false;
-            }
+            return isTradeable();
         }
 
         return true;
     }
 
     public boolean isPotion() {
-        return _item.isPotion();
+        return template.isPotion();
     }
 
     public boolean isElixir() {
-        return _item.isElixir();
+        return template.isElixir();
     }
 
     public boolean isScroll() {
-        return _item.isScroll();
+        return template.isScroll();
     }
 
     public boolean isHeroItem() {
-        return _item.isHeroItem();
+        return template.isHeroItem();
     }
 
     public boolean isCommonItem() {
-        return _item.isCommon();
+        return template.isCommon();
     }
 
     /**
@@ -772,11 +755,7 @@ public final class Item extends WorldObject {
      * @return boolean
      */
     public boolean isPvp() {
-        return _item.isPvpItem();
-    }
-
-    public boolean isOlyRestrictedItem() {
-        return _item.isOlyRestrictedItem();
+        return template.isPvpItem();
     }
 
     /**
@@ -788,13 +767,13 @@ public final class Item extends WorldObject {
     public boolean isAvailable(Player player, boolean allowAdena, boolean allowNonTradeable) {
         final Summon pet = player.getPet();
 
-        return ((!isEquipped()) // Not equipped
-                && (_item.getType2() != ItemTemplate.TYPE2_QUEST) // Not Quest Item
-                && ((_item.getType2() != ItemTemplate.TYPE2_MONEY) || (_item.getType1() != ItemTemplate.TYPE1_SHIELD_ARMOR)) // not money, not shield
+        return !isEquipped() && !isQuestItem()
+                && ((template.getType2() != ItemTemplate.TYPE2_MONEY) || (template.getType1() != ItemTemplate.TYPE1_SHIELD_ARMOR)) // not money, not shield
                 && ((pet == null) || (getObjectId() != pet.getControlObjectId())) // Not Control item of currently summoned pet
-                && !(player.isProcessingItem(getObjectId())) // Not momentarily used enchant scroll
-                && (allowAdena || (_itemId != CommonItem.ADENA)) // Not Adena
-                && (!player.isCastingNow(s -> s.getSkill().getItemConsumeId() != _itemId)) && (allowNonTradeable || (isTradeable() && (!((_item.getItemType() == EtcItemType.PET_COLLAR) && player.havePetInvItems())))));
+                && !player.isProcessingItem(getObjectId()) // Not momentarily used enchant scroll
+                && (allowAdena || (itemId != CommonItem.ADENA)) // Not Adena
+                && (!player.isCastingNow(s -> s.getSkill().getItemConsumeId() != itemId))
+                && (allowNonTradeable || (isTradeable() && (!((template.getItemType() == EtcItemType.PET_COLLAR) && player.havePetInvItems()))));
     }
 
     /**
@@ -862,7 +841,7 @@ public final class Item extends WorldObject {
         if (updateDatabase) {
             updateItemOptions();
         }
-        EventDispatcher.getInstance().notifyEventAsync(new OnPlayerAugment(getActingPlayer(), this, augmentation, true), getItem());
+        EventDispatcher.getInstance().notifyEventAsync(new OnPlayerAugment(getActingPlayer(), this, augmentation, true), getTemplate());
         return true;
     }
 
@@ -887,7 +866,7 @@ public final class Item extends WorldObject {
         }
 
         // Notify to scripts.
-        EventDispatcher.getInstance().notifyEventAsync(new OnPlayerAugment(getActingPlayer(), this, augment, false), getItem());
+        EventDispatcher.getInstance().notifyEventAsync(new OnPlayerAugment(getActingPlayer(), this, augment, false), getTemplate());
     }
 
     public void restoreAttributes() {
@@ -988,8 +967,8 @@ public final class Item extends WorldObject {
 
     public AttributeHolder getAttackAttribute() {
         if (isWeapon()) {
-            if (_item.getAttributes() != null) {
-                return _item.getAttributes().stream().findFirst().orElse(null);
+            if (template.getAttributes() != null) {
+                return template.getAttributes().stream().findFirst().orElse(null);
             } else if (_elementals != null) {
                 return _elementals.values().stream().findFirst().orElse(null);
             }
@@ -1009,8 +988,8 @@ public final class Item extends WorldObject {
 
     public int getDefenceAttribute(AttributeType element) {
         if (isArmor()) {
-            if (_item.getAttributes() != null) {
-                final AttributeHolder attribute = _item.getAttribute(element);
+            if (template.getAttributes() != null) {
+                final AttributeHolder attribute = template.getAttribute(element);
                 if (attribute != null) {
                     return attribute.getValue();
                 }
@@ -1094,131 +1073,6 @@ public final class Item extends WorldObject {
     }
 
     /**
-     * Returns true if this item is a shadow item Shadow items have a limited life-time
-     *
-     * @return
-     */
-    public boolean isShadowItem() {
-        return (_mana >= 0);
-    }
-
-    /**
-     * Returns the remaining mana of this shadow item
-     *
-     * @return lifeTime
-     */
-    public int getMana() {
-        return _mana;
-    }
-
-    /**
-     * Decreases the mana of this shadow item, sends a inventory update schedules a new consumption task if non is running optionally one could force a new task
-     *
-     * @param resetConsumingMana if true forces a new consumption task if item is equipped
-     */
-    public void decreaseMana(boolean resetConsumingMana) {
-        decreaseMana(resetConsumingMana, 1);
-    }
-
-    /**
-     * Decreases the mana of this shadow item, sends a inventory update schedules a new consumption task if non is running optionally one could force a new task
-     *
-     * @param resetConsumingMana if forces a new consumption task if item is equipped
-     * @param count              how much mana decrease
-     */
-    public void decreaseMana(boolean resetConsumingMana, int count) {
-        if (!isShadowItem()) {
-            return;
-        }
-
-        if ((_mana - count) >= 0) {
-            _mana -= count;
-        } else {
-            _mana = 0;
-        }
-
-        if (_storedInDb) {
-            _storedInDb = false;
-        }
-        if (resetConsumingMana) {
-            _consumingMana = false;
-        }
-
-        final Player player = getActingPlayer();
-        if (player != null) {
-            SystemMessage sm;
-            switch (_mana) {
-                case 10: {
-                    sm = SystemMessage.getSystemMessage(SystemMessageId.S1_S_REMAINING_MANA_IS_NOW_10);
-                    sm.addItemName(_item);
-                    player.sendPacket(sm);
-                    break;
-                }
-                case 5: {
-                    sm = SystemMessage.getSystemMessage(SystemMessageId.S1_S_REMAINING_MANA_IS_NOW_5);
-                    sm.addItemName(_item);
-                    player.sendPacket(sm);
-                    break;
-                }
-                case 1: {
-                    sm = SystemMessage.getSystemMessage(SystemMessageId.S1_S_REMAINING_MANA_IS_NOW_1_IT_WILL_DISAPPEAR_SOON);
-                    sm.addItemName(_item);
-                    player.sendPacket(sm);
-                    break;
-                }
-            }
-
-            if (_mana == 0) // The life time has expired
-            {
-                sm = SystemMessage.getSystemMessage(SystemMessageId.S1_S_REMAINING_MANA_IS_NOW_0_AND_THE_ITEM_HAS_DISAPPEARED);
-                sm.addItemName(_item);
-                player.sendPacket(sm);
-
-                // unequip
-                if (isEquipped()) {
-                    final Item[] unequiped = player.getInventory().unEquipItemInSlotAndRecord(getLocationSlot());
-                    final InventoryUpdate iu = new InventoryUpdate();
-                    for (Item item : unequiped) {
-                        iu.addModifiedItem(item);
-                    }
-                    player.sendInventoryUpdate(iu);
-                    player.broadcastUserInfo();
-                }
-
-                if (_loc != ItemLocation.WAREHOUSE) {
-                    // destroy
-                    player.getInventory().destroyItem("Item", this, player, null);
-
-                    // send update
-                    final InventoryUpdate iu = new InventoryUpdate();
-                    iu.addRemovedItem(this);
-                    player.sendInventoryUpdate(iu);
-                } else {
-                    player.getWarehouse().destroyItem("Item", this, player, null);
-                }
-            } else {
-                // Reschedule if still equipped
-                if (!_consumingMana && isEquipped()) {
-                    scheduleConsumeManaTask();
-                }
-                if (_loc != ItemLocation.WAREHOUSE) {
-                    final InventoryUpdate iu = new InventoryUpdate();
-                    iu.addModifiedItem(this);
-                    player.sendInventoryUpdate(iu);
-                }
-            }
-        }
-    }
-
-    public void scheduleConsumeManaTask() {
-        if (_consumingMana) {
-            return;
-        }
-        _consumingMana = true;
-        ThreadPool.schedule(new ScheduleConsumeManaTask(this), MANA_CONSUMPTION_RATE);
-    }
-
-    /**
      * Returns false cause item can't be attacked
      *
      * @return boolean false
@@ -1245,13 +1099,13 @@ public final class Item extends WorldObject {
 
         try {
             if (_existsInDb) {
-                if ((_ownerId == 0) || (_loc == ItemLocation.VOID) || (_loc == ItemLocation.REFUND) || ((_count == 0) && (_loc != ItemLocation.LEASE))) {
+                if ((_ownerId == 0) || (loc == ItemLocation.VOID) || (loc == ItemLocation.REFUND) || ((_count == 0) && (loc != ItemLocation.LEASE))) {
                     removeFromDb();
                 } else if (!Config.LAZY_ITEMS_UPDATE || force) {
                     updateInDb();
                 }
             } else {
-                if ((_ownerId == 0) || (_loc == ItemLocation.VOID) || (_loc == ItemLocation.REFUND) || ((_count == 0) && (_loc != ItemLocation.LEASE))) {
+                if ((_ownerId == 0) || (loc == ItemLocation.VOID) || (loc == ItemLocation.REFUND) || ((_count == 0) && (loc != ItemLocation.LEASE))) {
                     return;
                 }
                 insertIntoDb();
@@ -1265,7 +1119,7 @@ public final class Item extends WorldObject {
         ThreadPool.execute(new ItemDropTask(this, dropper, x, y, z));
         if (GameUtils.isPlayer(dropper)) {
             // Notify to scripts
-            EventDispatcher.getInstance().notifyEventAsync(new OnPlayerItemDrop(dropper.getActingPlayer(), this, new Location(x, y, z)), getItem());
+            EventDispatcher.getInstance().notifyEventAsync(new OnPlayerItemDrop(dropper.getActingPlayer(), this, new Location(x, y, z)), getTemplate());
         }
     }
 
@@ -1278,17 +1132,16 @@ public final class Item extends WorldObject {
         }
 
         try (Connection con = DatabaseFactory.getInstance().getConnection();
-             PreparedStatement ps = con.prepareStatement("UPDATE items SET owner_id=?,count=?,loc=?,loc_data=?,enchant_level=?,custom_type1=?,custom_type2=?,mana_left=?,time=? WHERE object_id = ?")) {
+             PreparedStatement ps = con.prepareStatement("UPDATE items SET owner_id=?,count=?,loc=?,loc_data=?,enchant_level=?,custom_type1=?,custom_type2=?,time=? WHERE object_id = ?")) {
             ps.setInt(1, _ownerId);
             ps.setLong(2, _count);
-            ps.setString(3, _loc.name());
+            ps.setString(3, loc.name());
             ps.setInt(4, _locData);
             ps.setInt(5, _enchantLevel);
             ps.setInt(6, _type1);
             ps.setInt(7, _type2);
-            ps.setInt(8, _mana);
-            ps.setLong(9, _time);
-            ps.setInt(10, getObjectId());
+            ps.setLong(8, _time);
+            ps.setInt(9, getObjectId());
             ps.executeUpdate();
             _existsInDb = true;
             _storedInDb = true;
@@ -1316,18 +1169,17 @@ public final class Item extends WorldObject {
         }
 
         try (Connection con = DatabaseFactory.getInstance().getConnection();
-             PreparedStatement ps = con.prepareStatement("INSERT INTO items (owner_id,item_id,count,loc,loc_data,enchant_level,object_id,custom_type1,custom_type2,mana_left,time) VALUES (?,?,?,?,?,?,?,?,?,?,?)")) {
+             PreparedStatement ps = con.prepareStatement("INSERT INTO items (owner_id,item_id,count,loc,loc_data,enchant_level,object_id,custom_type1,custom_type2,time) VALUES (?,?,?,?,?,?,?,?,?,?)")) {
             ps.setInt(1, _ownerId);
-            ps.setInt(2, _itemId);
+            ps.setInt(2, itemId);
             ps.setLong(3, _count);
-            ps.setString(4, _loc.name());
+            ps.setString(4, loc.name());
             ps.setInt(5, _locData);
             ps.setInt(6, _enchantLevel);
             ps.setInt(7, getObjectId());
             ps.setInt(8, _type1);
             ps.setInt(9, _type2);
-            ps.setInt(10, _mana);
-            ps.setLong(11, _time);
+            ps.setLong(10, _time);
 
             ps.executeUpdate();
             _existsInDb = true;
@@ -1395,7 +1247,7 @@ public final class Item extends WorldObject {
      */
     @Override
     public String toString() {
-        return _item + "[" + getObjectId() + "]";
+        return template + "[" + getObjectId() + "]";
     }
 
     public void resetOwnerTimer() {
@@ -1422,16 +1274,16 @@ public final class Item extends WorldObject {
     }
 
     public boolean isAvailable() {
-        if (!_item.isConditionAttached()) {
+        if (!template.isConditionAttached()) {
             return true;
         }
-        if ((_loc == ItemLocation.PET) || (_loc == ItemLocation.PET_EQUIP))
+        if ((loc == ItemLocation.PET) || (loc == ItemLocation.PET_EQUIP))
         {
             return true;
         }
         Creature owner = getActingPlayer();
         if (owner != null) {
-            for (Condition condition : _item.getConditions()) {
+            for (Condition condition : template.getConditions()) {
                 if (condition == null) {
                     continue;
                 }
@@ -1491,7 +1343,7 @@ public final class Item extends WorldObject {
         final Player player = getActingPlayer();
         if (player != null) {
             if (isEquipped()) {
-                final Item[] unequiped = player.getInventory().unEquipItemInSlotAndRecord(getLocationSlot());
+                var unequiped = player.getInventory().unEquipItemInSlotAndRecord(InventorySlot.fromId(getLocationSlot()));
                 final InventoryUpdate iu = new InventoryUpdate();
                 for (Item item : unequiped) {
                     iu.addModifiedItem(item);
@@ -1499,7 +1351,7 @@ public final class Item extends WorldObject {
                 player.sendInventoryUpdate(iu);
             }
 
-            if (_loc != ItemLocation.WAREHOUSE) {
+            if (loc != ItemLocation.WAREHOUSE) {
                 // destroy
                 player.getInventory().destroyItem("Item", this, player, null);
 
@@ -1510,14 +1362,16 @@ public final class Item extends WorldObject {
             } else {
                 player.getWarehouse().destroyItem("Item", this, player, null);
             }
-            player.sendPacket(SystemMessage.getSystemMessage(SystemMessageId.S1_HAS_EXPIRED).addItemName(_itemId));
+            player.sendPacket(SystemMessage.getSystemMessage(SystemMessageId.S1_HAS_EXPIRED).addItemName(itemId));
         }
     }
 
     public void scheduleLifeTimeTask() {
         if (!isTimeLimitedItem()) {
             return;
-        } else if (getRemainingTime() <= 0) {
+        }
+
+        if (getRemainingTime() <= 0) {
             endOfLife();
         } else {
             if (_lifeTimeTask != null) {
@@ -1554,7 +1408,7 @@ public final class Item extends WorldObject {
 
     @Override
     public boolean decayMe() {
-        if (Config.SAVE_DROPPED_ITEM) {
+        if (getSettings(GeneralSettings.class).saveDroppedItems()) {
             ItemsOnGroundManager.getInstance().removeObject(this);
         }
 
@@ -1562,22 +1416,11 @@ public final class Item extends WorldObject {
     }
 
     public boolean isQuestItem() {
-        return _item.isQuestItem();
-    }
-
-    public boolean isElementable() {
-        if ((_loc == ItemLocation.INVENTORY) || (_loc == ItemLocation.PAPERDOLL)) {
-            return _item.isElementable();
-        }
-        return false;
+        return template.isQuestItem();
     }
 
     public boolean isFreightable() {
-        return _item.isFreightable();
-    }
-
-    public int useSkillDisTime() {
-        return _item.useSkillDisTime();
+        return template.isFreightable();
     }
 
     public int getOlyEnchantLevel() {
@@ -1596,7 +1439,7 @@ public final class Item extends WorldObject {
     }
 
     public boolean hasPassiveSkills() {
-        return (_item.getItemType() == EtcItemType.ENCHT_ATTR_RUNE) && (_loc == ItemLocation.INVENTORY) && (_ownerId > 0) && (_item.getSkills(ItemSkillType.NORMAL) != null);
+        return (template.getItemType() == EtcItemType.ENCHT_ATTR_RUNE) && (loc == ItemLocation.INVENTORY) && (_ownerId > 0) && (template.getSkills(ItemSkillType.NORMAL) != null);
     }
 
     public void giveSkillsToOwner() {
@@ -1606,7 +1449,7 @@ public final class Item extends WorldObject {
 
         final Player player = getActingPlayer();
         if (player != null) {
-            _item.forEachSkill(ItemSkillType.NORMAL, holder ->
+            template.forEachSkill(ItemSkillType.NORMAL, holder ->
             {
                 final Skill skill = holder.getSkill();
                 if (skill.isPassive()) {
@@ -1623,7 +1466,7 @@ public final class Item extends WorldObject {
 
         final Player player = getActingPlayer();
         if (player != null) {
-            _item.forEachSkill(ItemSkillType.NORMAL, holder ->
+            template.forEachSkill(ItemSkillType.NORMAL, holder ->
             {
                 final Skill skill = holder.getSkill();
                 if (skill.isPassive()) {
@@ -1639,7 +1482,7 @@ public final class Item extends WorldObject {
     }
 
     public int getEquipReuseDelay() {
-        return _item.getEquipReuseDelay();
+        return template.getEquipReuseDelay();
     }
 
     /**
@@ -1656,9 +1499,9 @@ public final class Item extends WorldObject {
             }
 
             if (event != null) {
-                EventDispatcher.getInstance().notifyEventAsync(new OnItemBypassEvent(this, activeChar, event), getItem());
+                EventDispatcher.getInstance().notifyEventAsync(new OnItemBypassEvent(this, activeChar, event), getTemplate());
             } else {
-                EventDispatcher.getInstance().notifyEventAsync(new OnItemTalk(this, activeChar), getItem());
+                EventDispatcher.getInstance().notifyEventAsync(new OnItemTalk(this, activeChar), getTemplate());
             }
         }
     }
@@ -1877,7 +1720,7 @@ public final class Item extends WorldObject {
         }
 
         for (int id : getEnchantOptions()) {
-            final Options options = OptionData.getInstance().getOptions(id);
+            final Options options = AugmentationEngine.getInstance().getOptions(id);
             if (options != null) {
                 options.apply(player);
                 _enchantOptions.add(options);
@@ -1898,28 +1741,40 @@ public final class Item extends WorldObject {
         }
     }
 
-    /**
-     * Used to decrease mana (mana means life time for shadow items)
-     */
-    public static class ScheduleConsumeManaTask implements Runnable {
-        private static final Logger LOGGER = LoggerFactory.getLogger(ScheduleConsumeManaTask.class);
-        private final Item _shadowItem;
+    public BodyPart getBodyPart() {
+        return template instanceof EquipableItem ? template.getBodyPart() : BodyPart.NONE;
+    }
 
-        public ScheduleConsumeManaTask(Item item) {
-            _shadowItem = item;
-        }
+    public int getItemMask() {
+        return template.getItemMask();
+    }
 
-        @Override
-        public void run() {
-            try {
-                // decrease mana
-                if (_shadowItem != null) {
-                    _shadowItem.decreaseMana(true);
-                }
-            } catch (Exception e) {
-                LOGGER.error("", e);
-            }
-        }
+    public void forEachSkill(ItemSkillType type, Consumer<ItemSkillHolder> action) {
+        template.forEachSkill(type, action);
+    }
+
+    public double getStats(Stat stat, int defaultValue) {
+        return template.getStats(stat, defaultValue);
+    }
+
+    public boolean isBlessed() {
+        return template.isBlessed();
+    }
+
+    public boolean isAutoPotion() {
+        return template instanceof EtcItem && ((EtcItem) template).isAutoPotion();
+    }
+
+    public boolean isAutoSupply() {
+        return template instanceof EtcItem && ((EtcItem) template).isAutoSupply();
+    }
+
+    public ActionType getAction() {
+        return template.getDefaultAction();
+    }
+
+    public List<ItemSkillHolder> getSkills(ItemSkillType type) {
+        return template.getSkills(type);
     }
 
     static class ScheduleLifeTimeTask implements Runnable {
@@ -1995,7 +1850,7 @@ public final class Item extends WorldObject {
 
             // Add the Item dropped in the world as a visible object
             World.getInstance().addVisibleObject(_itеm, _itеm.getWorldRegion());
-            if (Config.SAVE_DROPPED_ITEM) {
+            if (getSettings(GeneralSettings.class).saveDroppedItems()) {
                 ItemsOnGroundManager.getInstance().save(_itеm);
             }
             _itеm.setDropperObjectId(0); // Set the dropper Id back to 0 so it no longer shows the drop packet

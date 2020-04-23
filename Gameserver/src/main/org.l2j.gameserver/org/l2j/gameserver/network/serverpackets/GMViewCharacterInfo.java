@@ -1,6 +1,6 @@
 package org.l2j.gameserver.network.serverpackets;
 
-import org.l2j.gameserver.data.xml.impl.ExperienceData;
+import org.l2j.gameserver.data.xml.impl.LevelData;
 import org.l2j.gameserver.enums.AttributeType;
 import org.l2j.gameserver.model.VariationInstance;
 import org.l2j.gameserver.model.actor.instance.Player;
@@ -43,7 +43,7 @@ public class GMViewCharacterInfo extends ServerPacket {
         writeInt(_activeChar.getClassId().getId());
         writeInt(_activeChar.getLevel());
         writeLong(_activeChar.getExp());
-        writeDouble((float) (_activeChar.getExp() - ExperienceData.getInstance().getExpForLevel(_activeChar.getLevel())) / (ExperienceData.getInstance().getExpForLevel(_activeChar.getLevel() + 1) - ExperienceData.getInstance().getExpForLevel(_activeChar.getLevel()))); // High Five exp %
+        writeDouble((float) (_activeChar.getExp() - LevelData.getInstance().getExpForLevel(_activeChar.getLevel())) / (LevelData.getInstance().getExpForLevel(_activeChar.getLevel() + 1) - LevelData.getInstance().getExpForLevel(_activeChar.getLevel()))); // High Five exp %
         writeInt(_activeChar.getSTR());
         writeInt(_activeChar.getDEX());
         writeInt(_activeChar.getCON());
@@ -61,24 +61,24 @@ public class GMViewCharacterInfo extends ServerPacket {
         writeInt(_activeChar.getMaxLoad());
         writeInt(_activeChar.getPkKills());
 
-        for (int slot : getPaperdollOrder()) {
+        for (var slot : getPaperdollOrder()) {
             writeInt(_activeChar.getInventory().getPaperdollObjectId(slot));
         }
 
-        for (int slot : getPaperdollOrder()) {
+        for (var slot : getPaperdollOrder()) {
             writeInt(_activeChar.getInventory().getPaperdollItemDisplayId(slot));
         }
 
-        for (int slot : getPaperdollOrder()) {
+        for (var slot : getPaperdollOrder()) { // TODO review
             final VariationInstance augment = _activeChar.getInventory().getPaperdollAugmentation(slot);
             writeInt(augment != null ? augment.getOption1Id() : 0); // Confirmed
             writeInt(augment != null ? augment.getOption2Id() : 0); // Confirmed
         }
 
-        writeByte((byte) _activeChar.getInventory().getTalismanSlots()); // CT2.3
-        writeByte((byte)(_activeChar.getInventory().canEquipCloak() ? 1 : 0)); // CT2.3
+        writeByte( _activeChar.getInventory().getTalismanSlots()); // CT2.3
+        writeByte(_activeChar.getInventory().canEquipCloak()); // CT2.3
         writeInt(0x00);
-        writeShort((short) 0x00);
+        writeShort(0x00);
         writeInt(_activeChar.getPAtk());
         writeInt(_activeChar.getPAtkSpd());
         writeInt(_activeChar.getPDef());

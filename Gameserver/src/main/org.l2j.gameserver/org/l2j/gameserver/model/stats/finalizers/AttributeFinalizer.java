@@ -22,7 +22,7 @@ import org.l2j.gameserver.model.itemcontainer.Inventory;
 import org.l2j.gameserver.model.items.enchant.attribute.AttributeHolder;
 import org.l2j.gameserver.model.items.instance.Item;
 import org.l2j.gameserver.model.stats.IStatsFunction;
-import org.l2j.gameserver.model.stats.Stats;
+import org.l2j.gameserver.model.stats.Stat;
 
 import java.util.Optional;
 
@@ -41,7 +41,7 @@ public class AttributeFinalizer implements IStatsFunction {
     }
 
     @Override
-    public double calc(Creature creature, Optional<Double> base, Stats stat) {
+    public double calc(Creature creature, Optional<Double> base, Stat stat) {
         throwIfPresent(base);
 
         double baseValue = creature.getTemplate().getBaseValue(stat, 0);
@@ -54,7 +54,7 @@ public class AttributeFinalizer implements IStatsFunction {
                         baseValue += weaponInstanceHolder.getValue();
                     }
 
-                    final AttributeHolder weaponHolder = weapon.getItem().getAttribute(_type);
+                    final AttributeHolder weaponHolder = weapon.getTemplate().getAttribute(_type);
                     if (weaponHolder != null) {
                         baseValue += weaponHolder.getValue();
                     }
@@ -68,7 +68,7 @@ public class AttributeFinalizer implements IStatsFunction {
                             baseValue += weaponInstanceHolder.getValue();
                         }
 
-                        final AttributeHolder weaponHolder = item.getItem().getAttribute(_type);
+                        final AttributeHolder weaponHolder = item.getTemplate().getAttribute(_type);
                         if (weaponHolder != null) {
                             baseValue += weaponHolder.getValue();
                         }
@@ -76,6 +76,6 @@ public class AttributeFinalizer implements IStatsFunction {
                 }
             }
         }
-        return Stats.defaultValue(creature, stat, baseValue);
+        return Stat.defaultValue(creature, stat, baseValue);
     }
 }

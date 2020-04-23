@@ -1,16 +1,15 @@
 package org.l2j.gameserver.model.actor.instance;
 
 import org.l2j.commons.util.CommonUtil;
-import org.l2j.commons.util.Util;
 import org.l2j.gameserver.Config;
-import org.l2j.gameserver.data.xml.impl.SkillData;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
 import org.l2j.gameserver.data.xml.impl.TeleportersData;
 import org.l2j.gameserver.enums.InstanceType;
 import org.l2j.gameserver.model.ClanPrivilege;
 import org.l2j.gameserver.model.actor.templates.NpcTemplate;
 import org.l2j.gameserver.model.effects.EffectType;
 import org.l2j.gameserver.model.entity.Fort;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.model.teleporter.TeleportHolder;
 import org.l2j.gameserver.network.serverpackets.ActionFailed;
 import org.l2j.gameserver.network.serverpackets.html.NpcHtmlMessage;
@@ -669,8 +668,8 @@ public class FortManager extends Merchant {
                         if (st.countTokens() >= 1) {
                             skill_lvl = Integer.parseInt(st.nextToken());
                         }
-                        skill = SkillData.getInstance().getSkill(skill_id, skill_lvl);
-                        if (skill.hasEffectType(EffectType.SUMMON)) {
+                        skill = SkillEngine.getInstance().getSkill(skill_id, skill_lvl);
+                        if (skill.hasAnyEffectType(EffectType.SUMMON)) {
                             player.doCast(skill);
                         } else if (!((skill.getMpConsume() + skill.getMpInitialConsume()) > getCurrentMp())) {
                             doCast(skill);
@@ -741,7 +740,7 @@ public class FortManager extends Merchant {
     }
 
     protected int validateCondition(Player player) {
-        if ((getFort() != null) && (getFort().getResidenceId() > 0)) {
+        if ((getFort() != null) && (getFort().getId() > 0)) {
             if (player.getClan() != null) {
                 if (getFort().getZone().isActive()) {
                     return COND_BUSY_BECAUSE_OF_SIEGE; // Busy because of siege

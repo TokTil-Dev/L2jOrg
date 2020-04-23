@@ -7,7 +7,7 @@ import org.l2j.commons.threading.ThreadPool;
 import org.l2j.gameserver.Config;
 import org.l2j.gameserver.data.database.dao.BotReportDAO;
 import org.l2j.gameserver.data.database.data.BotReportData;
-import org.l2j.gameserver.data.xml.impl.SkillData;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
 import org.l2j.gameserver.engine.captcha.CaptchaEngine;
 import org.l2j.gameserver.instancemanager.PunishmentManager;
 import org.l2j.gameserver.model.Clan;
@@ -18,7 +18,7 @@ import org.l2j.gameserver.model.punishment.PunishmentAffect;
 import org.l2j.gameserver.model.punishment.PunishmentTask;
 import org.l2j.gameserver.model.punishment.PunishmentType;
 import org.l2j.gameserver.model.skills.CommonSkill;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.world.zone.ZoneType;
 import org.l2j.gameserver.network.SystemMessageId;
 import org.l2j.gameserver.network.serverpackets.SystemMessage;
@@ -167,7 +167,7 @@ public final class ReportTable {
             return false;
         }
 
-        if (bot.getExp() == bot.getStat().getStartingExp()) {
+        if (bot.getExp() == bot.getStats().getStartingExp()) {
             reporter.sendPacket(SystemMessageId.YOU_CANNOT_REPORT_A_CHARACTER_WHO_HAS_NOT_ACQUIRED_ANY_XP_AFTER_CONNECTING);
             return false;
         }
@@ -297,7 +297,7 @@ public final class ReportTable {
      * @param sysMsg        (id of a system message to send when applying the punish)
      */
     private void addPunishment(int neededReports, int skillId, int skillLevel, int sysMsg) {
-        final Skill sk = SkillData.getInstance().getSkill(skillId, skillLevel);
+        final Skill sk = SkillEngine.getInstance().getSkill(skillId, skillLevel);
         if (nonNull(sk)) {
             _punishments.put(neededReports, new PunishHolder(sk, sysMsg));
         } else {

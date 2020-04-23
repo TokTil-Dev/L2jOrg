@@ -1,24 +1,10 @@
-/*
- * This file is part of the L2J Mobius project.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
 package org.l2j.gameserver.model;
 
-import org.l2j.gameserver.model.itemcontainer.Inventory;
-import org.l2j.gameserver.model.itemcontainer.PcInventory;
+import org.l2j.gameserver.enums.InventorySlot;
+import org.l2j.gameserver.model.itemcontainer.PlayerInventory;
 import org.l2j.gameserver.model.variables.PlayerVariables;
+
+import static org.l2j.gameserver.enums.InventorySlot.RIGHT_HAND;
 
 /**
  * Used to Store data sent to Client for Character.<br>
@@ -69,7 +55,7 @@ public class CharSelectInfoPackage {
     public CharSelectInfoPackage(int objectId, String name) {
         setObjectId(objectId);
         _name = name;
-        _paperdoll = PcInventory.restoreVisibleInventory(objectId);
+        _paperdoll = PlayerInventory.restoreVisibleInventory(objectId);
         _vars = new PlayerVariables(_objectId);
     }
 
@@ -186,8 +172,8 @@ public class CharSelectInfoPackage {
         _hairStyle = hairStyle;
     }
 
-    public int getPaperdollObjectId(int slot) {
-        return _paperdoll[slot][0];
+    public int getPaperdollObjectId(InventorySlot slot) {
+        return _paperdoll[slot.getId()][0];
     }
 
     public int getPaperdollItemId(int slot) {
@@ -250,8 +236,8 @@ public class CharSelectInfoPackage {
         _sp = sp;
     }
 
-    public int getEnchantEffect() {
-        return _paperdoll[Inventory.PAPERDOLL_RHAND][2];
+    public int getEnchantEffect(int slot) {
+        return _paperdoll[slot][2];
     }
 
     public int getReputation() {

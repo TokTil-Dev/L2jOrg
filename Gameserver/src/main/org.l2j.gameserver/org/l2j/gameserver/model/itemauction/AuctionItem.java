@@ -16,7 +16,7 @@
  */
 package org.l2j.gameserver.model.itemauction;
 
-import org.l2j.gameserver.datatables.ItemTable;
+import org.l2j.gameserver.engine.item.ItemEngine;
 import org.l2j.gameserver.idfactory.IdFactory;
 import org.l2j.gameserver.world.World;
 import org.l2j.gameserver.model.StatsSet;
@@ -46,7 +46,7 @@ public final class AuctionItem {
     }
 
     public final boolean checkItemExists() {
-        return ItemTable.getInstance().getTemplate(_itemId) != null;
+        return ItemEngine.getInstance().getTemplate(_itemId) != null;
     }
 
     public final int getAuctionItemId() {
@@ -73,7 +73,6 @@ public final class AuctionItem {
         final Item item = new Item(IdFactory.getInstance().getNextId(), _itemId);
         World.getInstance().addObject(item);
         item.setCount(_itemCount);
-        item.setEnchantLevel(item.getItem().getDefaultEnchantLevel());
         return item;
     }
 }

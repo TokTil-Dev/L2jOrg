@@ -16,21 +16,12 @@
  */
 package handlers.communityboard;
 
-import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.StringJoiner;
-
-import org.l2j.gameserver.Config;
 import org.l2j.commons.util.Rnd;
+import org.l2j.gameserver.Config;
 import org.l2j.gameserver.cache.HtmCache;
 import org.l2j.gameserver.data.xml.impl.NpcData;
 import org.l2j.gameserver.data.xml.impl.SpawnsData;
-import org.l2j.gameserver.datatables.ItemTable;
+import org.l2j.gameserver.engine.item.ItemEngine;
 import org.l2j.gameserver.enums.DropType;
 import org.l2j.gameserver.handler.CommunityBoardHandler;
 import org.l2j.gameserver.handler.IParseBoardHandler;
@@ -40,7 +31,10 @@ import org.l2j.gameserver.model.holders.DropHolder;
 import org.l2j.gameserver.model.items.CommonItem;
 import org.l2j.gameserver.model.items.ItemTemplate;
 import org.l2j.gameserver.model.spawns.NpcSpawnTemplate;
-import org.l2j.gameserver.model.stats.Stats;
+import org.l2j.gameserver.model.stats.Stat;
+
+import java.text.DecimalFormat;
+import java.util.*;
 
 /**
  * @author yksdtc
@@ -75,7 +69,7 @@ public class DropSearchBoard implements IParseBoardHandler
 			min = dropHolder.getMin();
 			max = dropHolder.getMax();
 			chance = dropHolder.getChance();
-			isRaid = npcTemplate.getType().equals("L2RaidBoss") || npcTemplate.getType().equals("L2GrandBoss");
+			isRaid = npcTemplate.getType().equals("RaidBoss") || npcTemplate.getType().equals("GrandBoss");
 		}
 		
 		/**
@@ -168,9 +162,9 @@ public class DropSearchBoard implements IParseBoardHandler
 				int start = (page - 1) * 14;
 				int end = Math.min(list.size() - 1, start + 14);
 				StringBuilder builder = new StringBuilder();
-				final double dropAmountEffectBonus = player.getStat().getValue(Stats.BONUS_DROP_AMOUNT, 1);
-				final double dropRateEffectBonus = player.getStat().getValue(Stats.BONUS_DROP_RATE, 1);
-				final double spoilRateEffectBonus = player.getStat().getValue(Stats.BONUS_SPOIL_RATE, 1);
+				final double dropAmountEffectBonus = player.getStats().getValue(Stat.BONUS_DROP_AMOUNT, 1);
+				final double dropRateEffectBonus = player.getStats().getValue(Stat.BONUS_DROP_RATE, 1);
+				final double spoilRateEffectBonus = player.getStats().getValue(Stat.BONUS_SPOIL_RATE, 1);
 				for (int index = start; index <= end; index++)
 				{
 					CBDropHolder cbDropHolder = list.get(index);
@@ -188,7 +182,7 @@ public class DropSearchBoard implements IParseBoardHandler
 					}
 					else
 					{
-						final ItemTemplate item = ItemTable.getInstance().getTemplate(cbDropHolder.itemId);
+						final ItemTemplate item = ItemEngine.getInstance().getTemplate(cbDropHolder.itemId);
 						
 						if (Config.RATE_DROP_CHANCE_BY_ID.get(cbDropHolder.itemId) != null)
 						{
@@ -286,7 +280,7 @@ public class DropSearchBoard implements IParseBoardHandler
 		int limit = 0;
 		Set<Integer> existInDropData = DROP_INDEX_CACHE.keySet();
 		List<ItemTemplate> items = new ArrayList<>();
-		for (ItemTemplate item : ItemTable.getInstance().getAllItems())
+		for (ItemTemplate item : ItemEngine.getInstance().getAllItems())
 		{
 			if (item == null)
 			{

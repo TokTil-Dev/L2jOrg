@@ -7,7 +7,7 @@ import org.l2j.gameserver.handler.IAffectScopeHandler;
 import org.l2j.gameserver.world.World;
 import org.l2j.gameserver.model.WorldObject;
 import org.l2j.gameserver.model.actor.Creature;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.model.skills.targets.AffectScope;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -19,6 +19,7 @@ import static org.l2j.gameserver.util.MathUtil.isInsideRadius2D;
 /**
  * Ring Range affect scope implementation. Gathers objects in ring/donut shaped area with start and end range.
  * @author Nik
+ * @author JoeAlisson
  */
 public class RingRange implements IAffectScopeHandler
 {
@@ -28,7 +29,7 @@ public class RingRange implements IAffectScopeHandler
 		final IAffectObjectHandler affectObject = AffectObjectHandler.getInstance().getHandler(skill.getAffectObject());
 		final int affectRange = skill.getAffectRange();
 		final int affectLimit = skill.getAffectLimit();
-		final int startRange = skill.getFanRange()[2];
+		final int startRange = skill.getFanRadius();
 		
 		// Target checks.
 		final AtomicInteger affected = new AtomicInteger(0);

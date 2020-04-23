@@ -18,10 +18,10 @@ package handlers.admincommandhandlers;
 
 import java.util.StringTokenizer;
 
-import org.l2j.gameserver.data.xml.impl.SkillData;
+import org.l2j.gameserver.engine.skill.api.SkillEngine;
 import org.l2j.gameserver.handler.IAdminCommandHandler;
 import org.l2j.gameserver.model.actor.instance.Player;
-import org.l2j.gameserver.model.skills.Skill;
+import org.l2j.gameserver.engine.skill.api.Skill;
 
 /**
  * The classical custom L2J implementation of the old //gmspeed GM command.
@@ -62,7 +62,7 @@ public final class AdminSuperHaste implements IAdminCommandHandler
 							time = Integer.parseInt(st.nextToken());
 						}
 						
-						final Skill superHasteSkill = SkillData.getInstance().getSkill(SUPER_HASTE_ID, val);
+						final Skill superHasteSkill = SkillEngine.getInstance().getSkill(SUPER_HASTE_ID, val);
 						superHasteSkill.applyEffects(player, player, true, time);
 					}
 				}

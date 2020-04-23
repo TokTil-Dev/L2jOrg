@@ -1,6 +1,6 @@
 package org.l2j.gameserver.model.itemcontainer;
 
-import org.l2j.gameserver.datatables.ItemTable;
+import org.l2j.gameserver.engine.item.ItemEngine;
 import org.l2j.gameserver.enums.ItemLocation;
 import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.model.items.instance.Item;
@@ -35,9 +35,9 @@ public class PcRefund extends ItemContainer {
         super.addItem(item);
         try {
             if (getSize() > 12) {
-                final Item removedItem = _items.remove(0);
+                final Item removedItem = items.remove(0);
                 if (removedItem != null) {
-                    ItemTable.getInstance().destroyItem("ClearRefund", removedItem, getOwner(), null);
+                    ItemEngine.getInstance().destroyItem("ClearRefund", removedItem, getOwner(), null);
                     removedItem.updateDatabase(true);
                 }
             }
@@ -53,14 +53,14 @@ public class PcRefund extends ItemContainer {
     @Override
     public void deleteMe() {
         try {
-            for (Item item : _items.values()) {
-                ItemTable.getInstance().destroyItem("ClearRefund", item, getOwner(), null);
+            for (Item item : items.values()) {
+                ItemEngine.getInstance().destroyItem("ClearRefund", item, getOwner(), null);
                 item.updateDatabase(true);
             }
         } catch (Exception e) {
             LOGGER.error("deleteMe()", e);
         }
-        _items.clear();
+        items.clear();
     }
 
     @Override

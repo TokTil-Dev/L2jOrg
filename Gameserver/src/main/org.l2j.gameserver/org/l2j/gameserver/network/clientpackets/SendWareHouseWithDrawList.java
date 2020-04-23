@@ -98,11 +98,11 @@ public final class SendWareHouseWithDrawList extends ClientPacket {
             // Calculate needed slots
             final Item item = warehouse.getItemByObjectId(i.getId());
             if ((item == null) || (item.getCount() < i.getCount())) {
-                GameUtils.handleIllegalPlayerAction(player, "Warning!! Character " + player.getName() + " of account " + player.getAccountName() + " tried to withdraw non-existent item from warehouse.", Config.DEFAULT_PUNISH);
+                GameUtils.handleIllegalPlayerAction(player, "Warning!! Character " + player.getName() + " of account " + player.getAccountName() + " tried to withdraw non-existent item from warehouse.");
                 return;
             }
 
-            weight += i.getCount() * item.getItem().getWeight();
+            weight += i.getCount() * item.getTemplate().getWeight();
             if (!item.isStackable()) {
                 slots += i.getCount();
             } else if (player.getInventory().getItemByItemId(item.getId()) == null) {

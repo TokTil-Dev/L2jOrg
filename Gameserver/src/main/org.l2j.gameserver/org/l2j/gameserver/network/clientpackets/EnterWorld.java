@@ -7,9 +7,10 @@ import org.l2j.gameserver.data.database.announce.manager.AnnouncementsManager;
 import org.l2j.gameserver.data.sql.impl.OfflineTradersTable;
 import org.l2j.gameserver.data.xml.impl.AdminData;
 import org.l2j.gameserver.data.xml.impl.BeautyShopData;
-import org.l2j.gameserver.data.xml.impl.ClanHallData;
+import org.l2j.gameserver.data.xml.impl.ClanHallManager;
 import org.l2j.gameserver.data.xml.impl.SkillTreesData;
 import org.l2j.gameserver.enums.ChatType;
+import org.l2j.gameserver.enums.StatusUpdateType;
 import org.l2j.gameserver.enums.SubclassInfoType;
 import org.l2j.gameserver.instancemanager.*;
 import org.l2j.gameserver.model.Clan;
@@ -19,6 +20,7 @@ import org.l2j.gameserver.model.actor.instance.Player;
 import org.l2j.gameserver.model.entity.*;
 import org.l2j.gameserver.model.holders.AttendanceInfoHolder;
 import org.l2j.gameserver.model.instancezone.Instance;
+import org.l2j.gameserver.model.items.BodyPart;
 import org.l2j.gameserver.model.items.instance.Item;
 import org.l2j.gameserver.model.quest.Quest;
 import org.l2j.gameserver.model.skills.AbnormalVisualEffect;
@@ -27,12 +29,17 @@ import org.l2j.gameserver.network.ConnectionState;
 import org.l2j.gameserver.network.Disconnection;
 import org.l2j.gameserver.network.SystemMessageId;
 import org.l2j.gameserver.network.serverpackets.*;
+import org.l2j.gameserver.network.serverpackets.ExUserBoostStat.BoostStatType;
 import org.l2j.gameserver.network.serverpackets.attendance.ExVipAttendanceItemList;
-import org.l2j.gameserver.network.serverpackets.mission.ExConnectedTimeAndGettableReward;
+import org.l2j.gameserver.network.serverpackets.autoplay.ExActivateAutoShortcut;
 import org.l2j.gameserver.network.serverpackets.elementalspirits.ElementalSpiritInfo;
 import org.l2j.gameserver.network.serverpackets.friend.FriendListPacket;
 import org.l2j.gameserver.network.serverpackets.html.NpcHtmlMessage;
+import org.l2j.gameserver.network.serverpackets.mission.ExConnectedTimeAndGettableReward;
+import org.l2j.gameserver.network.serverpackets.pledge.PledgeShowMemberListAll;
+import org.l2j.gameserver.settings.*;
 import org.l2j.gameserver.util.BuilderUtil;
+import org.l2j.gameserver.world.MapRegionManager;
 import org.l2j.gameserver.world.World;
 import org.l2j.gameserver.world.zone.ZoneType;
 import org.slf4j.Logger;
@@ -40,6 +47,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
+import static org.l2j.commons.configuration.Configurator.getSettings;
 import static org.l2j.gameserver.network.serverpackets.SystemMessage.getSystemMessage;
 
 /**
@@ -50,6 +58,7 @@ import static org.l2j.gameserver.network.serverpackets.SystemMessage.getSystemMe
  * <p>
  * packet format rev87 bddddbdcccccccccccccccccccc
  * <p>
+ * @author JoeAlisson
  */
 public class EnterWorld extends ClientPacket {
     private static final Logger LOGGER = LoggerFactory.getLogger(EnterWorld.class);
@@ -74,7 +83,7 @@ public class EnterWorld extends ClientPacket {
     public void runImpl() {
         final Player player = client.getPlayer();
         if (player == null) {
-            LOGGER.warn("EnterWorld failed! activeChar returned 'null'.");
+            LOGGER.warn("EnterWorld failed! player returned 'null'.");
             Disconnection.of(client).defaultSequence(false);
             return;
         }
@@ -104,17 +113,14 @@ public class EnterWorld extends ClientPacket {
 
         player.updatePvpTitleAndColor(false);
 
-        // Apply special GM properties to the GM when entering
         if (player.isGM()) {
             onGameMasterEnter(player);
         }
 
-        // Chat banned icon.
         if (player.isChatBanned()) {
             player.getEffectList().startAbnormalVisualEffect(AbnormalVisualEffect.NO_CHAT);
         }
 
-        // Set dead status if applies
         if (player.getCurrentHp() < 0.5) {
             player.setIsDead(true);
         }
@@ -124,39 +130,21 @@ public class EnterWorld extends ClientPacket {
         }
 
         client.sendPacket(new ExEnterWorld());
-
-        // Send Macro List
         player.getMacros().sendAllMacros();
-
-        // Send Teleport Bookmark List
         client.sendPacket(new ExGetBookMarkInfoPacket(player));
 
-        // Send Item List
         client.sendPacket(new ItemList(1, player));
         client.sendPacket(new ItemList(2, player));
-
-        // Send Quest Item List
         client.sendPacket(new ExQuestItemList(1, player));
         client.sendPacket(new ExQuestItemList(2, player));
-
-        // Send Action list
         player.sendPacket(ExBasicActionList.STATIC_PACKET);
 
-        // Send blank skill list
-        player.sendPacket(new SkillList());
-
-        // Send castle state.
         for (Castle castle : CastleManager.getInstance().getCastles()) {
             player.sendPacket(new ExCastleState(castle));
         }
 
-        // Send Dye Information
         player.sendPacket(new HennaInfo(player));
-
-        // Send Skill list
         player.sendSkillList();
-
-        // Send EtcStatusUpdate
         player.sendPacket(new EtcStatusUpdate(player));
 
         boolean showClanNotice = false;
@@ -175,10 +163,10 @@ public class EnterWorld extends ClientPacket {
 
                 if (siege.checkIsAttacker(clan)) {
                     player.setSiegeState((byte) 1);
-                    player.setSiegeSide(siege.getCastle().getResidenceId());
+                    player.setSiegeSide(siege.getCastle().getId());
                 } else if (siege.checkIsDefender(clan)) {
                     player.setSiegeState((byte) 2);
-                    player.setSiegeSide(siege.getCastle().getResidenceId());
+                    player.setSiegeSide(siege.getCastle().getId());
                 }
             }
 
@@ -189,10 +177,10 @@ public class EnterWorld extends ClientPacket {
 
                 if (siege.checkIsAttacker(clan)) {
                     player.setSiegeState((byte) 1);
-                    player.setSiegeSide(siege.getFort().getResidenceId());
+                    player.setSiegeSide(siege.getFort().getId());
                 } else if (siege.checkIsDefender(clan)) {
                     player.setSiegeState((byte) 2);
-                    player.setSiegeSide(siege.getFort().getResidenceId());
+                    player.setSiegeSide(siege.getFort().getId());
                 }
             }
 
@@ -211,7 +199,7 @@ public class EnterWorld extends ClientPacket {
             PledgeShowMemberListAll.sendAllTo(player);
             clan.broadcastToOnlineMembers(new ExPledgeCount(clan));
             player.sendPacket(new PledgeSkillList(clan));
-            final ClanHall ch = ClanHallData.getInstance().getClanHallByClan(clan);
+            final ClanHall ch = ClanHallManager.getInstance().getClanHallByClan(clan);
             if ((ch != null) && (ch.getCostFailDay() > 0)) {
                 final SystemMessage sm = getSystemMessage(SystemMessageId.PAYMENT_FOR_YOUR_CLAN_HALL_HAS_NOT_BEEN_MADE_PLEASE_MAKE_PAYMENT_TO_YOUR_CLAN_WAREHOUSE_BY_S1_TOMORROW);
                 sm.addInt(ch.getLease());
@@ -221,16 +209,18 @@ public class EnterWorld extends ClientPacket {
             player.sendPacket(ExPledgeWaitingListAlarm.STATIC_PACKET);
         }
 
-        // Send SubClass Info
         client.sendPacket(new ExSubjobInfo(player, SubclassInfoType.NO_CHANGES));
         client.sendPacket(new ExUserInfoInvenWeight(player));
         client.sendPacket(new ExAdenaInvenCount(player));
         client.sendPacket(new ExCoinCount(client.getCoin()));
-        client.sendPacket(new ShortCutInit(player));
+        client.sendPacket(new ShortCutInit());
+        player.forEachShortcut(s -> {
+            if(s.isActive()) {
+                client.sendPacket(new ExActivateAutoShortcut(s.getClientId(), true));
+            }
+        });
         client.sendPacket(new ExDressRoomUiOpen());
-        client.sendPacket(new ExSendCostumeList());
 
-        // Send Unread Mail Count
         if (MailManager.getInstance().hasUnreadPost(player)) {
             player.sendPacket(new ExUnReadMailCount(player));
         }
@@ -260,10 +250,7 @@ public class EnterWorld extends ClientPacket {
             }
         }
 
-        // Expand Skill
         player.sendPacket(new ExStorageMaxCount(player));
-
-        // Friend list
         client.sendPacket(new FriendListPacket(player));
 
         SystemMessage sm = getSystemMessage(SystemMessageId.YOUR_FRIEND_S1_JUST_LOGGED_IN).addString(player.getName());
@@ -274,7 +261,7 @@ public class EnterWorld extends ClientPacket {
 
         AnnouncementsManager.getInstance().showAnnouncements(player);
 
-        if ((Config.SERVER_RESTART_SCHEDULE_ENABLED) && (Config.SERVER_RESTART_SCHEDULE_MESSAGE)) {
+        if (getSettings(ServerSettings.class).scheduleRestart() && (Config.SERVER_RESTART_SCHEDULE_MESSAGE)) {
             player.sendPacket(new CreatureSay(2, ChatType.BATTLEFIELD, "[SERVER]", "Next restart is scheduled at " + ServerRestartManager.getInstance().getNextRestartTime() + "."));
         }
 
@@ -309,9 +296,6 @@ public class EnterWorld extends ClientPacket {
             if (item.isTimeLimitedItem()) {
                 item.scheduleLifeTimeTask();
             }
-            if (item.isShadowItem() && item.isEquipped()) {
-                item.decreaseMana(false);
-            }
         }
 
         for (Item whItem : player.getWarehouse().getItems()) {
@@ -328,10 +312,10 @@ public class EnterWorld extends ClientPacket {
         if (player.getInventory().getItemByItemId(9819) != null) {
             final Fort fort = FortDataManager.getInstance().getFort(player);
             if (fort != null) {
-                FortSiegeManager.getInstance().dropCombatFlag(player, fort.getResidenceId());
+                FortSiegeManager.getInstance().dropCombatFlag(player, fort.getId());
             } else {
-                final long slot = player.getInventory().getSlotFromItem(player.getInventory().getItemByItemId(9819));
-                player.getInventory().unEquipItemInBodySlot(slot);
+                var bodyPart = BodyPart.fromEquippedPaperdoll(player.getInventory().getItemByItemId(9819));
+                player.getInventory().unEquipItemInBodySlot(bodyPart);
                 player.destroyItem("CombatFlag", player.getInventory().getItemByItemId(9819), null, true);
             }
         }
@@ -350,7 +334,7 @@ public class EnterWorld extends ClientPacket {
             player.destroyItem("Akamanah", player.getInventory().getItemByItemId(8689), null, true);
         }
 
-        if (Config.ALLOW_MAIL) {
+        if (getSettings(GeneralSettings.class).allowMail()) {
             if (MailManager.getInstance().hasUnreadPost(player)) {
                 client.sendPacket(ExNoticePostArrived.valueOf(false));
             }
@@ -358,16 +342,6 @@ public class EnterWorld extends ClientPacket {
 
         if (Config.WELCOME_MESSAGE_ENABLED) {
             player.sendPacket(new ExShowScreenMessage(Config.WELCOME_MESSAGE_TEXT, Config.WELCOME_MESSAGE_TIME));
-        }
-
-        final int birthday = player.checkBirthDay();
-        if (birthday == 0) {
-            player.sendPacket(SystemMessageId.HAPPY_BIRTHDAY_ALEGRIA_HAS_SENT_YOU_A_BIRTHDAY_GIFT);
-            // activeChar.sendPacket(new ExBirthdayPopup()); Removed in H5?
-        } else if (birthday != -1) {
-            sm = getSystemMessage(SystemMessageId.THERE_ARE_S1_DAYS_REMAINING_UNTIL_YOUR_BIRTHDAY_ON_YOUR_BIRTHDAY_YOU_WILL_RECEIVE_A_GIFT_THAT_ALEGRIA_HAS_CAREFULLY_PREPARED);
-            sm.addString(Integer.toString(birthday));
-            player.sendPacket(sm);
         }
 
         if (!player.getPremiumItemList().isEmpty()) {
@@ -387,37 +361,53 @@ public class EnterWorld extends ClientPacket {
         }
 
         player.broadcastUserInfo();
-        // Send Equipped Items
+        player.sendPacket(StatusUpdate.of(player, StatusUpdateType.CUR_HP, (int) player.getCurrentHp()).addUpdate(StatusUpdateType.MAX_HP, player.getMaxHp()));
         player.sendPacket(new ExUserInfoEquipSlot(player));
 
-        if (Config.ENABLE_WORLD_CHAT) {
+        if (getSettings(ChatSettings.class).worldChatEnabled()) {
             player.sendPacket(new ExWorldChatCnt(player));
         }
         player.sendPacket(new ExConnectedTimeAndGettableReward(player));
-
-        // Handle soulshots, disable all on EnterWorld
         player.sendPacket(new ExAutoSoulShot(0, true, 0));
         player.sendPacket(new ExAutoSoulShot(0, true, 1));
         player.sendPacket(new ExAutoSoulShot(0, true, 2));
         player.sendPacket(new ExAutoSoulShot(0, true, 3));
-
 
         // Fix for equipped item skills
         if (!player.getEffectList().getCurrentAbnormalVisualEffects().isEmpty()) {
             player.updateAbnormalVisualEffects();
         }
 
-        if (Config.ENABLE_ATTENDANCE_REWARDS) {
+        if (getSettings(AttendanceSettings.class).enabled()) {
             sendAttendanceInfo(player);
         }
 
+        var rateXp = getSettings(RateSettings.class).xp();
+        if(rateXp > 1) {
+            player.sendPacket(new ExUserBoostStat(BoostStatType.SERVER, (short) (rateXp * 100 - 100)));
+        }
+
         if (Config.HARDWARE_INFO_ENABLED) {
-            ThreadPool.schedule(() ->
-            {
+            ThreadPool.schedule(() -> {
                 if (client.getHardwareInfo() == null) {
                     Disconnection.of(client).defaultSequence(false);
                 }
             }, 5000);
+        }
+
+        // Check if in time limited hunting zone.
+        if (player.isInTimedHuntingZone())
+        {
+            final long currentTime = System.currentTimeMillis();
+            final long pirateTombExitTime = player.getVariables().getLong(PlayerVariables.HUNTING_ZONE_RESET_TIME + 2, 0);
+            if ((pirateTombExitTime > currentTime) && player.isInTimedHuntingZone(2))
+            {
+                player.startTimedHuntingZone(1, pirateTombExitTime - currentTime);
+            }
+            else
+            {
+                player.teleToLocation(MapRegionManager.getInstance().getTeleToLocation(player, TeleportWhereType.TOWN));
+            }
         }
 
         player.onEnter();
@@ -425,6 +415,7 @@ public class EnterWorld extends ClientPacket {
     }
 
     private void sendAttendanceInfo(Player activeChar) {
+        var attendanceSettings = getSettings(AttendanceSettings.class);
         ThreadPool.schedule(() -> {
             // Check if player can receive reward today.
             final AttendanceInfoHolder attendanceInfo = activeChar.getAttendanceInfo();
@@ -433,11 +424,11 @@ public class EnterWorld extends ClientPacket {
                 activeChar.sendPacket(new ExShowScreenMessage("Your attendance day " + lastRewardIndex + " reward is ready.", ExShowScreenMessage.TOP_CENTER, 7000, 0, true, true));
                 activeChar.sendMessage("Your attendance day " + lastRewardIndex + " reward is ready.");
                 activeChar.sendMessage("Click on General Menu -> Attendance Check.");
-                if (Config.ATTENDANCE_POPUP_WINDOW) {
+                if (attendanceSettings.popUpWindow()) {
                     activeChar.sendPacket(new ExVipAttendanceItemList(activeChar));
                 }
             }
-        }, Config.ATTENDANCE_REWARD_DELAY * 60  * 1000);
+        }, attendanceSettings.delay() * 60  * 1000);
     }
 
     private void onGameMasterEnter(Player activeChar) {

@@ -4,20 +4,18 @@ import org.l2j.commons.threading.ThreadPool;
 import org.l2j.commons.util.Rnd;
 import org.l2j.gameserver.Config;
 import org.l2j.gameserver.ItemsAutoDestroy;
+import org.l2j.gameserver.api.elemental.ElementalType;
 import org.l2j.gameserver.cache.HtmCache;
-import org.l2j.gameserver.data.xml.impl.ClanHallData;
-import org.l2j.gameserver.datatables.ItemTable;
-import org.l2j.gameserver.engine.elemental.api.ElementalType;
+import org.l2j.gameserver.data.xml.impl.ClanHallManager;
+import org.l2j.gameserver.engine.item.ItemEngine;
+import org.l2j.gameserver.engine.skill.api.Skill;
 import org.l2j.gameserver.enums.*;
 import org.l2j.gameserver.handler.BypassHandler;
 import org.l2j.gameserver.handler.IBypassHandler;
-import org.l2j.gameserver.instancemanager.CastleManager;
-import org.l2j.gameserver.instancemanager.DBSpawnManager;
-import org.l2j.gameserver.instancemanager.FortDataManager;
-import org.l2j.gameserver.instancemanager.WalkingManager;
+import org.l2j.gameserver.instancemanager.*;
 import org.l2j.gameserver.model.*;
 import org.l2j.gameserver.model.actor.instance.*;
-import org.l2j.gameserver.model.actor.stat.NpcStat;
+import org.l2j.gameserver.model.actor.stat.NpcStats;
 import org.l2j.gameserver.model.actor.status.NpcStatus;
 import org.l2j.gameserver.model.actor.templates.NpcTemplate;
 import org.l2j.gameserver.model.entity.Castle;
@@ -32,13 +30,14 @@ import org.l2j.gameserver.model.instancezone.Instance;
 import org.l2j.gameserver.model.items.Weapon;
 import org.l2j.gameserver.model.items.instance.Item;
 import org.l2j.gameserver.model.olympiad.Olympiad;
-import org.l2j.gameserver.model.skills.Skill;
 import org.l2j.gameserver.model.spawns.NpcSpawnTemplate;
 import org.l2j.gameserver.model.variables.NpcVariables;
 import org.l2j.gameserver.network.NpcStringId;
 import org.l2j.gameserver.network.SystemMessageId;
 import org.l2j.gameserver.network.serverpackets.*;
 import org.l2j.gameserver.network.serverpackets.html.NpcHtmlMessage;
+import org.l2j.gameserver.settings.GeneralSettings;
+import org.l2j.gameserver.settings.RateSettings;
 import org.l2j.gameserver.taskmanager.DecayTaskManager;
 import org.l2j.gameserver.util.Broadcast;
 import org.l2j.gameserver.util.GameUtils;
@@ -49,6 +48,8 @@ import org.l2j.gameserver.world.zone.ZoneType;
 import org.l2j.gameserver.world.zone.type.TaxZone;
 
 import java.util.List;
+
+import static org.l2j.commons.configuration.Configurator.getSettings;
 
 /**
  * This class represents a Non-Player-Character in the world.<br>
@@ -114,7 +115,7 @@ public class Npc extends Creature {
     private NpcStringId _nameString;
 
     private StatsSet _params;
-    private DBSpawnManager.DBStatusType _raidStatus;
+    private RaidBossStatus _raidStatus;
 
     /**
      * Contains information about local tax payments.
@@ -199,13 +200,13 @@ public class Npc extends Creature {
     }
 
     @Override
-    public NpcStat getStat() {
-        return (NpcStat) super.getStat();
+    public NpcStats getStats() {
+        return (NpcStats) super.getStats();
     }
 
     @Override
     public void initCharStat() {
-        setStat(new NpcStat(this));
+        setStat(new NpcStats(this));
     }
 
     @Override
@@ -451,7 +452,7 @@ public class Npc extends Creature {
     }
 
     public final ClanHall getClanHall() {
-        return ClanHallData.getInstance().getClanHallByNpcId(getId());
+        return ClanHallManager.getInstance().getClanHallByNpcId(getId());
     }
 
     /**
@@ -626,7 +627,7 @@ public class Npc extends Creature {
             }
         }
 
-        if (getTemplate().isType("L2Auctioneer") && (val == 0)) {
+        if (getTemplate().isType("Auctioneer") && (val == 0)) {
             return;
         }
 
@@ -706,7 +707,7 @@ public class Npc extends Creature {
      */
     public double getExpReward() {
         final Instance instance = getInstanceWorld();
-        final float rateMul = instance != null ? instance.getExpRate() : Config.RATE_XP;
+        final float rateMul = instance != null ? instance.getExpRate() : getSettings(RateSettings.class).xp();
         return getTemplate().getExp() * rateMul;
     }
 
@@ -815,7 +816,7 @@ public class Npc extends Creature {
             WalkingManager.getInstance().onSpawn(this);
         }
 
-        if (isInsideZone(ZoneType.TAX) && (getCastle() != null) && (Config.SHOW_CREST_WITHOUT_QUEST || getCastle().getShowNpcCrest()) && (getCastle().getOwnerId() != 0)) {
+        if (isInsideZone(ZoneType.TAX) && (getCastle() != null) && (Config.SHOW_CREST_WITHOUT_QUEST || getCastle().isShowNpcCrest()) && (getCastle().getOwnerId() != 0)) {
             setClanId(getCastle().getOwnerId());
         }
     }
@@ -1069,26 +1070,33 @@ public class Npc extends Creature {
         broadcastInfo();
     }
 
-
     @Override
-    public void rechargeShots(boolean physical, boolean magic, boolean fish) {
-        if (physical && (_soulshotamount > 0)) {
-            if (Rnd.get(100) > getTemplate().getSoulShotChance()) {
-                return;
-            }
-            _soulshotamount--;
-            Broadcast.toSelfAndKnownPlayersInRadius(this, new MagicSkillUse(this, this, 2154, 1, 0, 0), 600);
-            chargeShot(ShotType.SOULSHOTS);
+    public void consumeAndRechargeShots(ShotType shotType, int targets) {
+        if (shotType == ShotType.SOULSHOTS) {
+            consumeAndRechargeSoulShots();
+        } else if (shotType == ShotType.SPIRITSHOTS) {
+            consumeAndRechargeSpiritShots();
         }
-        if (magic && (_spiritshotamount > 0)) {
-            if (Rnd.get(100) > getTemplate().getSpiritShotChance()) {
-                return;
-            }
+    }
+
+    private void consumeAndRechargeSpiritShots() {
+        if(_spiritshotamount > 0 && Rnd.chance(getTemplate().getSpiritShotChance())) {
             _spiritshotamount--;
             Broadcast.toSelfAndKnownPlayersInRadius(this, new MagicSkillUse(this, this, 2061, 1, 0, 0), 600);
-            chargeShot(ShotType.SPIRITSHOTS);
+            chargeShot(ShotType.SPIRITSHOTS, 4);
+        } else {
+            unchargeShot(ShotType.SPIRITSHOTS);
         }
+    }
 
+    private void consumeAndRechargeSoulShots() {
+        if(_soulshotamount > 0 && Rnd.chance(getTemplate().getSoulShotChance())) {
+            _soulshotamount--;
+            Broadcast.toSelfAndKnownPlayersInRadius(this, new MagicSkillUse(this, this, 2154, 1, 0, 0), 600);
+            chargeShot(ShotType.SOULSHOTS, 4);
+        } else {
+            unchargeShot(ShotType.SOULSHOTS);
+        }
     }
 
     /**
@@ -1210,12 +1218,12 @@ public class Npc extends Creature {
             final int newY = (getY() + Rnd.get((RANDOM_ITEM_DROP_LIMIT * 2) + 1)) - RANDOM_ITEM_DROP_LIMIT;
             final int newZ = getZ() + 20;
 
-            if (ItemTable.getInstance().getTemplate(itemId) == null) {
+            if (ItemEngine.getInstance().getTemplate(itemId) == null) {
                 LOGGER.error("Item doesn't exist so cannot be dropped. Item ID: " + itemId + " Quest: " + getName());
                 return null;
             }
 
-            item = ItemTable.getInstance().createItem("Loot", itemId, itemCount, character, this);
+            item = ItemEngine.getInstance().createItem("Loot", itemId, itemCount, character, this);
             if (item == null) {
                 return null;
             }
@@ -1228,7 +1236,8 @@ public class Npc extends Creature {
 
             // Add drop to auto destroy item task.
             if (!Config.LIST_PROTECTED_ITEMS.contains(itemId)) {
-                if (((Config.AUTODESTROY_ITEM_AFTER > 0) && !item.getItem().hasExImmediateEffect()) || ((Config.HERB_AUTO_DESTROY_TIME > 0) && item.getItem().hasExImmediateEffect())) {
+                var generalSettings = getSettings(GeneralSettings.class);
+                if (( generalSettings.autoDestroyItemTime() > 0 && !item.getTemplate().hasExImmediateEffect()) || (generalSettings.autoDestroyHerbTime() > 0 && item.getTemplate().hasExImmediateEffect())) {
                     ItemsAutoDestroy.getInstance().addItem(item);
                 }
             }
@@ -1475,11 +1484,11 @@ public class Npc extends Creature {
         broadcastPacket(new ExShowChannelingEffect(this, target, state));
     }
 
-    public DBSpawnManager.DBStatusType getDBStatus() {
+    public RaidBossStatus getRaidBossStatus() {
         return _raidStatus;
     }
 
-    public void setDBStatus(DBSpawnManager.DBStatusType status) {
+    public void setRaidBossStatus(RaidBossStatus status) {
         _raidStatus = status;
     }
 }

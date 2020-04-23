@@ -48,7 +48,7 @@ public class RequestCrystallizeEstimate extends ClientPacket {
         // }
 
         if (_count <= 0) {
-            GameUtils.handleIllegalPlayerAction(activeChar, "[RequestCrystallizeItem] count <= 0! ban! oid: " + _objectId + " owner: " + activeChar.getName(), Config.DEFAULT_PUNISH);
+            GameUtils.handleIllegalPlayerAction(activeChar, "[RequestCrystallizeItem] count <= 0! ban! oid: " + _objectId + " owner: " + activeChar.getName());
             return;
         }
 
@@ -65,14 +65,14 @@ public class RequestCrystallizeEstimate extends ClientPacket {
         }
 
         final Item item = activeChar.getInventory().getItemByObjectId(_objectId);
-        if ((item == null) || item.isShadowItem() || item.isTimeLimitedItem() || item.isHeroItem()) {
+        if ((item == null) || item.isTimeLimitedItem() || item.isHeroItem()) {
             client.sendPacket(ActionFailed.STATIC_PACKET);
             return;
         }
 
-        if (!item.getItem().isCrystallizable() || (item.getItem().getCrystalCount() <= 0) || (item.getItem().getCrystalType() == CrystalType.NONE)) {
+        if (!item.getTemplate().isCrystallizable() || (item.getTemplate().getCrystalCount() <= 0) || (item.getTemplate().getCrystalType() == CrystalType.NONE)) {
             client.sendPacket(ActionFailed.STATIC_PACKET);
-            LOGGER.warn("{} tried to crystallize {}", activeChar, item.getItem());
+            LOGGER.warn("{} tried to crystallize {}", activeChar, item.getTemplate());
             return;
         }
 
@@ -80,7 +80,7 @@ public class RequestCrystallizeEstimate extends ClientPacket {
             _count = activeChar.getInventory().getItemByObjectId(_objectId).getCount();
         }
 
-        if (!activeChar.getInventory().canManipulateWithItemId(item.getId())) {
+        if (!activeChar.getInventory().canManipulate(item)) {
             activeChar.sendMessage("You cannot use this item.");
             return;
         }
@@ -88,7 +88,7 @@ public class RequestCrystallizeEstimate extends ClientPacket {
         // Check if the char can crystallize items and return if false;
         boolean canCrystallize = true;
 
-        switch (item.getItem().getCrystalType()) {
+        switch (item.getTemplate().getCrystalType()) {
             case D: {
                 if (skillLevel < 1) {
                     canCrystallize = false;

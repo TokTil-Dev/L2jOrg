@@ -6,8 +6,7 @@ import org.l2j.gameserver.model.ItemInfo;
 import org.l2j.gameserver.model.TradeItem;
 import org.l2j.gameserver.model.buylist.Product;
 import org.l2j.gameserver.model.ensoul.EnsoulOption;
-import org.l2j.gameserver.model.itemcontainer.PcInventory;
-import org.l2j.gameserver.model.items.WarehouseItem;
+import org.l2j.gameserver.model.itemcontainer.PlayerInventory;
 import org.l2j.gameserver.model.items.instance.Item;
 
 import java.nio.ByteBuffer;
@@ -57,10 +56,6 @@ public abstract class AbstractItemPacket extends AbstractMaskPacket<ItemListType
         writeItem(new ItemInfo(item));
     }
 
-    protected void writeItem(WarehouseItem item) {
-        writeItem(new ItemInfo(item));
-    }
-
     protected void writeItem(Item item) {
         writeItem(new ItemInfo(item));
     }
@@ -72,22 +67,22 @@ public abstract class AbstractItemPacket extends AbstractMaskPacket<ItemListType
     protected void writeItem(ItemInfo item) {
         final int mask = calculateMask(item);
         // cddcQcchQccddc
-        writeByte((byte) mask);
+        writeByte(mask);
         writeInt(item.getObjectId()); // ObjectId
-        writeInt(item.getItem().getDisplayId()); // ItemId
-        writeByte((byte) (item.getItem().isQuestItem() || (item.getEquipped() == 1) ? 0xFF : item.getLocation())); // T1
+        writeInt(item.getDisplayId()); // ItemId
+        writeByte(item.isQuestItem() || (item.getEquipped() == 1) ? 0xFF : item.getLocationSlot()); // T1
         writeLong(item.getCount()); // Quantity
-        writeByte((byte) item.getItem().getType2()); // Item Type 2 : 00-weapon, 01-shield/armor, 02-ring/earring/necklace, 03-questitem, 04-adena, 05-item
-        writeByte((byte) item.getCustomType1()); // Filler (always 0)
-        writeShort((short) item.getEquipped()); // Equipped : 00-No, 01-yes
-        writeLong(item.getItem().getBodyPart()); // Slot : 0006-lr.ear, 0008-neck, 0030-lr.finger, 0040-head, 0100-l.hand, 0200-gloves, 0400-chest, 0800-pants, 1000-feet, 4000-r.hand, 8000-r.hand
-        writeByte((byte) item.getEnchantLevel()); // Enchant level (pet level shown in control item)
-        writeByte((byte) 0x01); // TODO : Find me
-        writeInt(item.getMana());
+        writeByte(item.getType2()); // Item Type 2 : 00-weapon, 01-shield/armor, 02-ring/earring/necklace, 03-questitem, 04-adena, 05-item
+        writeByte(item.getCustomType1()); // Filler (always 0)
+        writeShort(item.getEquipped()); // Equipped : 00-No, 01-yes
+        writeLong(item.getBodyPart().getId()); // Slot : 0006-lr.ear, 0008-neck, 0030-lr.finger, 0040-head, 0100-l.hand, 0200-gloves, 0400-chest, 0800-pants, 1000-feet, 4000-r.hand, 8000-r.hand
+        writeByte(item.getEnchantLevel()); // Enchant level (pet level shown in control item)
+        writeByte(0x01); // TODO : Find me
+        writeInt(-1); // mana
         writeInt(item.getTime());
-        writeByte((byte) (item.isAvailable() ? 1 : 0)); // GOD Item enabled = 1 disabled (red) = 0
-        writeByte((byte) 0x00); // 140 protocol
-        writeByte((byte) 0x00); // 140 protocol
+        writeByte(item.isAvailable()); // GOD Item enabled = 1 disabled (red) = 0
+        writeByte(0x00); // 140 protocol
+        writeByte(0x00); // 140 protocol
         if (containsMask(mask, ItemListType.AUGMENT_BONUS)) {
             writeItemAugment(item);
         }
@@ -107,16 +102,16 @@ public abstract class AbstractItemPacket extends AbstractMaskPacket<ItemListType
         final int mask = calculateMask(item);
         writeByte((byte) mask);
         writeInt(item.getObjectId()); // ObjectId
-        writeInt(item.getItem().getDisplayId()); // ItemId
-        writeByte((byte) (item.getItem().isQuestItem() || (item.getEquipped() == 1) ? 0xFF : item.getLocation())); // T1
+        writeInt(item.getDisplayId()); // ItemId
+        writeByte((item.isQuestItem() || (item.getEquipped() == 1) ? 0xFF : item.getLocationSlot())); // T1
         writeLong(count); // Quantity
-        writeByte((byte) item.getItem().getType2()); // Item Type 2 : 00-weapon, 01-shield/armor, 02-ring/earring/necklace, 03-questitem, 04-adena, 05-item
+        writeByte(item.getType2()); // Item Type 2 : 00-weapon, 01-shield/armor, 02-ring/earring/necklace, 03-questitem, 04-adena, 05-item
         writeByte((byte) item.getCustomType1()); // Filler (always 0)
         writeShort((short) item.getEquipped()); // Equipped : 00-No, 01-yes
-        writeLong(item.getItem().getBodyPart()); // Slot : 0006-lr.ear, 0008-neck, 0030-lr.finger, 0040-head, 0100-l.hand, 0200-gloves, 0400-chest, 0800-pants, 1000-feet, 4000-r.hand, 8000-r.hand
+        writeLong(item.getBodyPart().getId()); // Slot : 0006-lr.ear, 0008-neck, 0030-lr.finger, 0040-head, 0100-l.hand, 0200-gloves, 0400-chest, 0800-pants, 1000-feet, 4000-r.hand, 8000-r.hand
         writeByte((byte) item.getEnchantLevel()); // Enchant level (pet level shown in control item)
         writeByte((byte) 0x01); // TODO : Find me
-        writeInt(item.getMana());
+        writeInt(-1); // mana
         writeInt(item.getTime());
         writeByte((byte) (item.isAvailable() ? 1 : 0)); // GOD Item enabled = 1 disabled (red) = 0
         writeByte((byte) 0x00); // 140 protocol
@@ -204,15 +199,13 @@ public abstract class AbstractItemPacket extends AbstractMaskPacket<ItemListType
         }
     }
 
-    protected void writeInventoryBlock(PcInventory inventory) {
+    protected void writeInventoryBlock(PlayerInventory inventory) {
         if (inventory.hasInventoryBlock()) {
-            writeShort((short) inventory.getBlockItems().size());
-            writeByte((byte) inventory.getBlockMode().getClientId());
-            for (int id : inventory.getBlockItems()) {
-                writeInt(id);
-            }
+            writeShort(inventory.getBlockItems().size());
+            writeByte(inventory.getBlockMode().getClientId());
+            inventory.getBlockItems().forEach(this::writeInt);
         } else {
-            writeShort((short) 0x00);
+            writeShort(0x00);
         }
     }
 }

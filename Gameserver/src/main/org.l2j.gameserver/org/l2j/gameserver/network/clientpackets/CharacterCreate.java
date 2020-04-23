@@ -1,7 +1,7 @@
 package org.l2j.gameserver.network.clientpackets;
 
 import org.l2j.gameserver.Config;
-import org.l2j.gameserver.data.database.data.CharacterData;
+import org.l2j.gameserver.data.database.data.PlayerData;
 import org.l2j.gameserver.data.sql.impl.PlayerNameTable;
 import org.l2j.gameserver.data.xml.impl.InitialEquipmentData;
 import org.l2j.gameserver.data.xml.impl.InitialShortcutData;
@@ -9,11 +9,11 @@ import org.l2j.gameserver.data.xml.impl.PlayerTemplateData;
 import org.l2j.gameserver.idfactory.IdFactory;
 import org.l2j.gameserver.model.Location;
 import org.l2j.gameserver.model.actor.instance.Player;
-import org.l2j.gameserver.model.actor.stat.PcStat;
+import org.l2j.gameserver.model.actor.stat.PlayerStats;
 import org.l2j.gameserver.model.actor.templates.PlayerTemplate;
 import org.l2j.gameserver.model.base.ClassId;
-import org.l2j.gameserver.model.events.Containers;
 import org.l2j.gameserver.model.events.EventDispatcher;
+import org.l2j.gameserver.model.events.Listeners;
 import org.l2j.gameserver.model.events.impl.character.player.OnPlayerCreate;
 import org.l2j.gameserver.model.items.PcItemTemplate;
 import org.l2j.gameserver.model.items.instance.Item;
@@ -26,6 +26,7 @@ import org.l2j.gameserver.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static java.util.Objects.isNull;
@@ -123,15 +124,17 @@ public final class CharacterCreate extends ClientPacket {
                 return;
             }
 
-            var character = new CharacterData();
+            var character = new PlayerData();
             character.setId(IdFactory.getInstance().getNextId());
             character.setName(name);
+            character.setBaseClass(classId);
             character.setClassId(classId);
             character.setFace(face);
             character.setHairColor(hairColor);
             character.setHairStyle(hairStyle);
             character.setFemale(female);
             character.setAccountName(client.getAccountName());
+            character.setCreateDate(LocalDate.now());
 
             newChar = Player.create(character, template);
 
@@ -172,13 +175,13 @@ public final class CharacterCreate extends ClientPacket {
         newChar.setTitle("");
 
         if (Config.ENABLE_VITALITY) {
-            newChar.setVitalityPoints(Math.min(Config.STARTING_VITALITY_POINTS, PcStat.MAX_VITALITY_POINTS), true);
+            newChar.setVitalityPoints(Math.min(Config.STARTING_VITALITY_POINTS, PlayerStats.MAX_VITALITY_POINTS), true);
         }
         if (Config.STARTING_LEVEL > 1) {
-            newChar.getStat().addLevel((byte) (Config.STARTING_LEVEL - 1));
+            newChar.getStats().addLevel((byte) (Config.STARTING_LEVEL - 1));
         }
         if (Config.STARTING_SP > 0) {
-            newChar.getStat().addSp(Config.STARTING_SP);
+            newChar.getStats().addSp(Config.STARTING_SP);
         }
 
         final List<PcItemTemplate> initialItems = InitialEquipmentData.getInstance().getEquipmentList(newChar.getClassId());
@@ -201,7 +204,7 @@ public final class CharacterCreate extends ClientPacket {
         // Register all shortcuts for actions, skills and items for this new character.
         InitialShortcutData.getInstance().registerAllShortcuts(newChar);
 
-        EventDispatcher.getInstance().notifyEvent(new OnPlayerCreate(newChar, newChar.getObjectId(), newChar.getName(), client), Containers.Players());
+        EventDispatcher.getInstance().notifyEvent(new OnPlayerCreate(newChar, newChar.getObjectId(), newChar.getName(), client), Listeners.players());
 
         newChar.setOnlineStatus(true, false);
 
